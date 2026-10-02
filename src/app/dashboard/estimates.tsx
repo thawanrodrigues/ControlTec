@@ -24,7 +24,8 @@ export default function EstimatesScreen() {
 
   const [formData, setFormData] = useState({
     id: '', status: 'Pendente', description: '', notes: '',
-    items: '[]', totalValue: '0', validUntil: '', customerId: ''
+    items: '[]', totalValue: '0', validUntil: '', customerId: '',
+    warranty: ''
   });
   const formDataRef = useRef(formData);
 
@@ -70,21 +71,21 @@ export default function EstimatesScreen() {
     }
     setSaveLoading(true);
     try {
+      // Strip nested relation objects that Prisma rejects on update
+      const { customer, device, company, code, createdAt, updatedAt, totalValue, id: _id, ...cleanData } = current as any;
       const payload = { 
-        ...current, 
+        ...cleanData, 
         total: parseFloat(current.totalValue) || 0,
         items: String(current.items || '[]')
       };
       if (current.id) {
-        const { id, totalValue, ...updateData } = payload;
-        await api.update('estimates', current.id, updateData);
+        await api.update('estimates', current.id, payload);
       } else {
-        const { id, totalValue, ...createData } = payload;
-        await api.create('estimates', createData);
+        await api.create('estimates', payload);
       }
       setModalVisible(false);
       fetchData();
-      const reset = { id: '', status: 'Pendente', description: '', notes: '', items: '[]', totalValue: '0', validUntil: '', customerId: '' };
+      const reset = { id: '', status: 'Pendente', description: '', notes: '', items: '[]', totalValue: '0', validUntil: '', customerId: '', warranty: '' };
       formDataRef.current = reset;
       setFormData(reset);
     } catch (error: any) {
@@ -95,7 +96,7 @@ export default function EstimatesScreen() {
   };
 
   const handleEdit = (item: any) => {
-    const next = { ...item, totalValue: String(item.total || 0), notes: item.notes || '' };
+    const next = { ...item, totalValue: String(item.total || 0), notes: item.notes || '', warranty: item.warranty || '' };
     formDataRef.current = next;
     setFormData(next);
     setModalVisible(true);
@@ -131,6 +132,7 @@ export default function EstimatesScreen() {
       notes: item.notes,
       createdAt: item.createdAt,
       validUntil: item.validUntil,
+      warranty: item.warranty || '',
     },
     customer: {
       name: item.customer?.name || 'Cliente',
@@ -418,6 +420,36 @@ export default function EstimatesScreen() {
               </View>
 
               <View style={styles.inputGroup}>
+                <Text style={styles.label}>Período de Garantia</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 90 dias, sem garantia, 1 ano"
+                  placeholderTextColor={Theme.colors.textSecondary}
+                  value={formData.warranty}
+                  onChangeText={v => updateFormData({ warranty: v })}
+                />
+                <View style={styles.shortcutRow}>
+                  {['Sem garantia', '30 dias', '90 dias', '180 dias', '1 ano'].map((period) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[
+                        styles.shortcutPill,
+                        formData.warranty === period && styles.shortcutPillActive
+                      ]}
+                      onPress={() => updateFormData({ warranty: period })}
+                    >
+                      <Text style={[
+                        styles.shortcutPillText,
+                        formData.warranty === period && styles.shortcutPillTextActive
+                      ]}>
+                        {period}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
                 <Text style={styles.label}>Válido Até (opcional)</Text>
                 <TextInput
                   style={styles.input}
@@ -505,4 +537,9 @@ const styles = StyleSheet.create({
   cancelButtonText: { fontSize: 16, color: Theme.colors.textSecondary, fontWeight: '600' },
   saveButton: { backgroundColor: Theme.colors.primary, paddingVertical: Theme.spacing.sm, paddingHorizontal: Theme.spacing.xl, borderRadius: Theme.borderRadius.sm, minWidth: 100, alignItems: 'center' },
   saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  shortcutRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  shortcutPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: Theme.colors.inputBackground, borderWidth: 1, borderColor: Theme.colors.border },
+  shortcutPillActive: { backgroundColor: Theme.colors.accent, borderColor: Theme.colors.accent },
+  shortcutPillText: { fontSize: 13, color: Theme.colors.textSecondary },
+  shortcutPillTextActive: { color: Theme.colors.textInverse, fontWeight: '600' },
 });

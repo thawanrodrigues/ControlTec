@@ -45,3 +45,13 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local database & test scripts
+*.db
+*.db-journal
+server/*.db
+server/*.db-journal
+deploy_*.js
+project.tar.gz
+scripts/
+server/seed.js

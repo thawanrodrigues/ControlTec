@@ -1,10 +1,13 @@
 import { storage } from './storage';
 
 const getApiUrl = () => {
+  // EXPO_PUBLIC_API_URL should be the BASE domain only, e.g. https://2.24.108.68.nip.io
+  // The request() method below adds /api prefix automatically
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
   
-  if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
-    return 'https://controltec-api.onrender.com';
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    // Auto-detect production: same origin, backend lives at /api/
+    return window.location.origin;
   }
   
   return 'http://localhost:4000';

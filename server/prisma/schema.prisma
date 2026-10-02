@@ -26,6 +26,8 @@ model Company {
   inventory  InventoryItem[]
   finances   Transaction[]
   schedules  Schedule[]
+  services   Service[]
+  sales      Sale[]
 }
 
 model User {
@@ -56,6 +58,7 @@ model Customer {
   orders    ServiceOrder[]
   estimates Estimate[]
   schedules Schedule[]
+  sales     Sale[]
 }
 
 model Device {
@@ -68,35 +71,35 @@ model Device {
   defect       String?
   status       String   @default("Em diagnóstico")
   customerId   String
-  customer   Customer @relation(fields: [customerId], references: [id])
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  customer     Customer @relation(fields: [customerId], references: [id])
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   orders    ServiceOrder[]
   estimates Estimate[]
 }
 
 model ServiceOrder {
-  id          String   @id @default(uuid())
-  code        String
-  description String?
-  techNotes   String?
-  technician  String?
-  status      String   @default("Aberta")
-  priority    String   @default("Normal")
-  defect      String?
+  id           String   @id @default(uuid())
+  code         String
+  description  String?
+  techNotes    String?
+  technician   String?
+  status       String   @default("Aberta")
+  priority     String   @default("Normal")
+  defect       String?
   observations String?
-  totalValue  Float    @default(0)
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  deviceId    String?
-  device      Device?  @relation(fields: [deviceId], references: [id])
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  totalValue   Float    @default(0)
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  deviceId     String?
+  device       Device?  @relation(fields: [deviceId], references: [id])
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Estimate {
@@ -108,14 +111,15 @@ model Estimate {
   items       String?
   notes       String?
   validUntil  String?
+  warranty    String?
   customerId  String
-  customer   Customer @relation(fields: [customerId], references: [id])
-  deviceId   String?
-  device     Device?  @relation(fields: [deviceId], references: [id])
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  customer    Customer @relation(fields: [customerId], references: [id])
+  deviceId    String?
+  device      Device?  @relation(fields: [deviceId], references: [id])
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model InventoryItem {
@@ -131,6 +135,40 @@ model InventoryItem {
   company   Company  @relation(fields: [companyId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Service {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  defaultPrice Float    @default(0)
+  active       Boolean  @default(true)
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Sale {
+  id            String    @id @default(uuid())
+  code          String
+  customerId    String?
+  customerName  String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  items         String    @default("[]") // JSON string com array de itens [{ id, type, name, qty, price, subtotal, originalId }]
+  totalServices Float     @default(0)
+  totalProducts Float     @default(0)
+  discount      Float     @default(0)
+  totalValue    Float     @default(0)
+  paymentMethod String    @default("Dinheiro")
+  status        String    @default("Pago") // "Pago" | "Pendente" | "Cancelado"
+  paidAt        DateTime?
+  notes         String?
+  warranty      String?
+  companyId     String
+  company       Company   @relation(fields: [companyId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Transaction {

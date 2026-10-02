@@ -10,6 +10,8 @@ import { inventoryRoutes } from './routes/inventory.routes';
 import { financeRoutes } from './routes/finance.routes';
 import { scheduleRoutes } from './routes/schedule.routes';
 import { userRoutes } from './routes/users.routes';
+import { serviceRoutes } from './routes/services.routes';
+import { saleRoutes } from './routes/sales.routes';
 
 dotenv.config();
 
@@ -29,6 +31,8 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/sales', saleRoutes);
 
 // Health check e Rota Inicial
 app.get('/', (_req, res) => {

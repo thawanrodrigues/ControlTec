@@ -12,7 +12,8 @@ import {
   CalendarClock,
   Settings,
   LogOut,
-  ShoppingCart
+  ShoppingCart,
+  Wrench
 } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { api } from '../../services/api';
@@ -26,12 +27,13 @@ const CTIcon = ({ size, color }: { size: number, color: string }) => (
 
 const MENU_ITEMS = [
   { id: 'home', title: 'Início', icon: CTIcon, route: '/dashboard' },
+  { id: 'sales', title: 'Vendas/Recibos', icon: ShoppingCart, route: '/dashboard/sales' },
+  { id: 'services', title: 'Serviços', icon: Wrench, route: '/dashboard/services' },
+  { id: 'inventory', title: 'Estoque', icon: Package, route: '/dashboard/inventory' },
   { id: 'customers', title: 'Clientes', icon: Users, route: '/dashboard/customers' },
   { id: 'equipment', title: 'Aparelhos', icon: MonitorSmartphone, route: '/dashboard/equipment' },
   { id: 'os', title: 'Ordens (OS)', icon: ClipboardList, route: '/dashboard/os' },
   { id: 'estimates', title: 'Orçamentos', icon: FileText, route: '/dashboard/estimates' },
-  { id: 'sales', title: 'Vendas', icon: ShoppingCart, route: '/dashboard/sales' },
-  { id: 'inventory', title: 'Estoque', icon: Package, route: '/dashboard/inventory' },
   { id: 'finance', title: 'Financeiro', icon: CircleDollarSign, route: '/dashboard/finance' },
   { id: 'schedule', title: 'Agendamentos', icon: CalendarClock, route: '/dashboard/schedule' },
   { id: 'settings', title: 'Config.', icon: Settings, route: '/dashboard/settings' },

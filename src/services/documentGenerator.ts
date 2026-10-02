@@ -13,6 +13,7 @@ export interface DocumentData {
     items?: string;
     notes?: string;
     createdAt?: string;
+    warranty?: string;
   };
   customer: {
     name: string;
@@ -30,11 +31,8 @@ export interface DocumentData {
   };
 }
 
-const LOGO_SVG = `
-  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="36" height="36" rx="8" fill="#0F2A5A"/>
-    <text x="18" y="24" font-family="Arial Black, sans-serif" font-size="14" font-weight="900" fill="#FFB703" text-anchor="middle">CT</text>
-  </svg>
+const LOGO_HTML = `
+  <div style="width: 36px; height: 36px; background: #0F2A5A; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Arial Black', sans-serif; font-size: 14px; font-weight: 900; color: #FFB703; line-height: 1; flex-shrink: 0;">CT</div>
 `;
 
 function formatCurrency(value: number): string {
@@ -68,11 +66,12 @@ const BASE_STYLES = `
   }
   .page {
     background: #fff;
-    max-width: 760px;
+    width: 760px;
+    max-width: 100%;
     margin: 0 auto;
-    min-height: 100vh;
     padding: 0;
     box-shadow: 0 0 40px rgba(0,0,0,0.12);
+    position: relative;
   }
   .header {
     background: #0F2A5A;
@@ -201,6 +200,11 @@ const BASE_STYLES = `
   .stamp.aprovado { color: #10B981; border-color: #10B981; }
   .stamp.pendente { color: #F59E0B; border-color: #F59E0B; }
 
+  tr, .section, .total-section, .signature-section, .guarantee-box, .description-box {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
   @media print {
     body { background: #fff; padding: 0; }
     .page { box-shadow: none; max-width: 100%; }
@@ -297,13 +301,32 @@ const ACTION_BAR = (docType: string, whatsappText: string) => `
       btn.disabled = true;
 
       try {
+        // Reset scroll position to avoid blank space at top of PDF
+        window.scrollTo(0, 0);
+
         const element = document.querySelector('.page');
+        // Measure actual content height to fit everything on ONE page
+        const contentH = element.scrollHeight;
+        const contentW = 760;
+        // Convert px to pt for jsPDF (1px = 0.75pt at 96dpi)
+        const ptW = Math.round(contentW * 0.75);
+        const ptH = Math.round(contentH * 0.75);
         const opt = {
           margin:       0,
           filename:     '${docType}.pdf',
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2 },
-          jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+          html2canvas:  { 
+            scale: 2, 
+            useCORS: true,
+            windowWidth: contentW + 2,
+            width: contentW,
+            height: contentH,
+            scrollY: 0,
+            scrollX: 0,
+            x: 0,
+            y: 0
+          },
+          jsPDF:        { unit: 'pt', format: [ptW, ptH], orientation: 'portrait' },
         };
 
         const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
@@ -380,7 +403,7 @@ export function generateRecibo(data: DocumentData): void {
   <div class="page">
     <div class="header">
       <div class="header-left">
-        ${LOGO_SVG}
+        ${LOGO_HTML}
         <div>
           <div class="company-name">Control<span>Tec</span></div>
           <div class="company-info">
@@ -394,6 +417,7 @@ export function generateRecibo(data: DocumentData): void {
         <div class="doc-type">Recibo</div>
         <div class="doc-number">${docNum}</div>
         <div class="doc-date">Data: ${date}</div>
+        ${estimate.warranty ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
         <div style="margin-top:10px;">
           <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status}</span>
         </div>
@@ -517,7 +541,7 @@ export function generateNotaServico(data: DocumentData): void {
   <style>
     ${activeStyles}
     .watermark {
-      position: fixed;
+      position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%) rotate(-35deg);
       font-size: 90px;
@@ -554,7 +578,7 @@ export function generateNotaServico(data: DocumentData): void {
   <div class="page">
     <div class="header">
       <div class="header-left">
-        ${LOGO_SVG}
+        ${LOGO_HTML}
         <div>
           <div class="company-name">Control<span>Tec</span></div>
           <div class="company-info">
@@ -569,6 +593,7 @@ export function generateNotaServico(data: DocumentData): void {
         <div class="doc-number">${docNum}</div>
         <div class="doc-date">Emissão: ${date}</div>
         ${validUntil !== '—' ? `<div class="doc-date">Válido até: ${validUntil}</div>` : ''}
+        ${estimate.warranty ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
         <div style="margin-top:10px;">
           <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status}</span>
         </div>
@@ -629,7 +654,7 @@ export function generateNotaServico(data: DocumentData): void {
         <div class="guarantee-icon">🛡️</div>
         <div class="guarantee-text">
           <h4>GARANTIA DOS SERVIÇOS</h4>
-          <p>Os serviços prestados possuem garantia conforme acordado com o cliente. Em caso de dúvidas, entre em contato com nossa empresa.</p>
+          <p>${estimate.warranty ? `Este serviço possui garantia de <strong>${estimate.warranty}</strong>.` : 'Os serviços prestados possuem garantia conforme acordado com o cliente.'} Em caso de dúvidas, entre em contato com nossa empresa.</p>
         </div>
       </div>
 
@@ -676,3 +701,328 @@ export function generateNotaServico(data: DocumentData): void {
     win.document.close();
   }
 }
+
+export interface SaleReceiptData {
+  sale: {
+    id: string;
+    code: string;
+    totalServices: number;
+    totalProducts: number;
+    discount: number;
+    totalValue: number;
+    paymentMethod: string;
+    status: string; // 'Pago' | 'Pendente'
+    paidAt?: string | null;
+    createdAt?: string;
+    items: string | Array<{
+      id?: string;
+      type: 'servico' | 'produto' | 'avulso';
+      name: string;
+      qty: number;
+      price: number;
+      subtotal?: number;
+    }>;
+    notes?: string;
+    warranty?: string;
+    customerName?: string;
+  };
+  customer?: {
+    name: string;
+    document?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  };
+  company: {
+    name: string;
+    tradeName?: string;
+    cnpj?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+  };
+}
+
+export function generateReciboVenda(data: SaleReceiptData): void {
+  const { sale, customer, company } = data;
+  const docNum = sale.code || `#${sale.id.slice(0, 8).toUpperCase()}`;
+  const date = formatDate(sale.createdAt || sale.paidAt || undefined);
+  const total = formatCurrency(sale.totalValue);
+  const clientName = customer?.name || sale.customerName || 'Consumidor Final';
+
+  let rawItems: any[] = [];
+  if (typeof sale.items === 'string') {
+    try {
+      rawItems = JSON.parse(sale.items || '[]');
+    } catch {
+      rawItems = [];
+    }
+  } else if (Array.isArray(sale.items)) {
+    rawItems = sale.items;
+  }
+
+  const servicos = rawItems.filter(i => i.type === 'servico');
+  const produtos = rawItems.filter(i => i.type === 'produto' || i.type === 'avulso' || !i.type);
+
+  const subtotalServicos = servicos.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
+  const subtotalProdutos = produtos.reduce((acc, i) => acc + (i.price || 0) * (i.qty || 1), 0);
+  const desconto = sale.discount || 0;
+
+  const paperSize = localStorage.getItem('printSettings_paperSizeReceipt') || 'A4';
+  const isThermal = paperSize === '80mm' || paperSize === '58mm';
+  const thermalWidth = paperSize === '80mm' ? '300px' : '220px';
+  const activeStyles = isThermal ? THERMAL_STYLES(thermalWidth) : BASE_STYLES;
+
+  const isPago = sale.status === 'Pago' || sale.status === 'Concluída' || sale.status === 'Recebido';
+
+  const whatsappMsg = `*RECIBO ${docNum} - ${company.name}*\n\nCliente: ${clientName}\nData: ${date}\nTotal: ${total}\nForma de Pagamento: ${sale.paymentMethod}\nStatus: ${isPago ? 'PAGO' : 'PENDENTE'}\n\nDocumento sem valor fiscal.\nPara visualizar o comprovante detalhado em PDF, solicite o arquivo.`;
+
+  const servicosRows = servicos.map(i => `
+    <tr>
+      <td>${i.name || 'Serviço'}</td>
+      <td class="right">${i.qty || 1}</td>
+      <td class="right">${formatCurrency(i.price || 0)}</td>
+      <td class="right">${formatCurrency((i.qty || 1) * (i.price || 0))}</td>
+    </tr>
+  `).join('');
+
+  const produtosRows = produtos.map(i => `
+    <tr>
+      <td>${i.name || 'Peça / Item'}</td>
+      <td class="right">${i.qty || 1}</td>
+      <td class="right">${formatCurrency(i.price || 0)}</td>
+      <td class="right">${formatCurrency((i.qty || 1) * (i.price || 0))}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Recibo ${docNum} - ${company.name}</title>
+  <style>
+    ${activeStyles}
+    .fiscal-notice {
+      background: #fdf6b2;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .summary-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-top: 16px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #475569;
+      padding: 4px 0;
+    }
+    .summary-row.total {
+      border-top: 2px solid #0F2A5A;
+      margin-top: 8px;
+      padding-top: 8px;
+      font-size: 16px;
+      font-weight: 900;
+      color: #0F2A5A;
+    }
+    .payment-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .payment-badge.pago {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .payment-badge.pendente {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-left">
+        ${LOGO_HTML}
+        <div>
+          <div class="company-name">${company.tradeName || 'Control'}<span>Tec</span></div>
+          <div class="company-info">
+            ${company.name}<br/>
+            ${company.cnpj ? `CNPJ: ${company.cnpj}` : ''}<br/>
+            ${company.phone || ''} ${company.email ? `| ${company.email}` : ''}<br/>
+            ${company.address || ''}
+          </div>
+        </div>
+      </div>
+      <div class="doc-badge">
+        <div class="doc-type">RECIBO DE VENDA</div>
+        <div class="doc-number">${docNum}</div>
+        <div class="doc-date">Emissão: ${date}</div>
+        <div style="margin-top:8px;">
+          <span class="payment-badge ${isPago ? 'pago' : 'pendente'}">
+            ${isPago ? '✓ PAGO' : '⏳ PENDENTE / FIADO'}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="fiscal-notice">
+        ⚠ Documento sem valor fiscal — Comprovante de prestação de serviços / venda de peças
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados do Cliente</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Cliente</label>
+            <p>${clientName}</p>
+          </div>
+          ${customer?.document ? `<div class="info-item"><label>CPF/CNPJ</label><p>${customer.document}</p></div>` : ''}
+          ${customer?.phone ? `<div class="info-item"><label>Telefone</label><p>${customer.phone}</p></div>` : ''}
+          ${customer?.email ? `<div class="info-item"><label>E-mail</label><p>${customer.email}</p></div>` : ''}
+          ${customer?.address ? `<div class="info-item" style="grid-column: span 2;"><label>Endereço</label><p>${customer.address}</p></div>` : ''}
+        </div>
+      </div>
+
+      ${servicos.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Serviços Prestados</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Descrição do Serviço</th>
+              <th class="right">Qtd</th>
+              <th class="right">Valor Unit.</th>
+              <th class="right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${servicosRows}
+            <tr class="subtotal-row">
+              <td colspan="3" class="right">Subtotal Serviços:</td>
+              <td class="right">${formatCurrency(subtotalServicos)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+
+      ${produtos.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Peças / Produtos</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Descrição do Item</th>
+              <th class="right">Qtd</th>
+              <th class="right">Valor Unit.</th>
+              <th class="right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${produtosRows}
+            <tr class="subtotal-row">
+              <td colspan="3" class="right">Subtotal Peças/Produtos:</td>
+              <td class="right">${formatCurrency(subtotalProdutos)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+
+      <div class="summary-box">
+        ${servicos.length > 0 && produtos.length > 0 ? `
+        <div class="summary-row">
+          <span>Subtotal de Serviços:</span>
+          <strong>${formatCurrency(subtotalServicos)}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Subtotal de Peças e Produtos:</span>
+          <strong>${formatCurrency(subtotalProdutos)}</strong>
+        </div>
+        ` : ''}
+        ${desconto > 0 ? `
+        <div class="summary-row" style="color:#dc2626;">
+          <span>Desconto Concedido:</span>
+          <strong>- ${formatCurrency(desconto)}</strong>
+        </div>
+        ` : ''}
+        <div class="summary-row">
+          <span>Forma de Pagamento:</span>
+          <strong>${sale.paymentMethod}</strong>
+        </div>
+        <div class="summary-row total">
+          <span>TOTAL GERAL:</span>
+          <span style="font-size:22px;color:#0F2A5A;">${total}</span>
+        </div>
+      </div>
+
+      ${sale.warranty ? `
+      <div class="section" style="margin-top:16px;">
+        <div class="section-title">Garantia</div>
+        <div class="description-box">🛡️ ${sale.warranty}</div>
+      </div>` : ''}
+
+      ${sale.notes ? `
+      <div class="section" style="margin-top:16px;">
+        <div class="section-title">Observações</div>
+        <div class="description-box">${sale.notes}</div>
+      </div>` : ''}
+
+      <div class="signature-section">
+        <div class="signature-box">
+          <div style="height:45px;"></div>
+          <div class="signature-line"></div>
+          <div class="signature-label">Assinatura da Empresa</div>
+          <div class="signature-name">${company.name}</div>
+        </div>
+        <div class="signature-box">
+          <div style="height:45px;"></div>
+          <div class="signature-line"></div>
+          <div class="signature-label">Assinatura do Cliente</div>
+          <div class="signature-name">${clientName}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>
+        <strong>${company.name}</strong> — Sistema ControlTec<br/>
+        Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.<br/>
+        <em>Documento sem valor fiscal</em>
+      </p>
+    </div>
+  </div>
+
+  ${ACTION_BAR(`Recibo_${docNum}`, whatsappMsg)}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=860,height=700,scrollbars=yes');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
+
