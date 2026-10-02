@@ -10,6 +10,7 @@ import {
   Platform,
   Alert
 } from 'react-native';
+import { Theme } from '../../ui/themes';
 import { 
   Search, Plus, List, CircleDollarSign, CreditCard, Trash2, Check, 
   Wallet, Coins, ChevronRight, TrendingUp, TrendingDown, ArrowDownLeft, ArrowDown 
