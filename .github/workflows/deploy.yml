@@ -32,7 +32,7 @@ jobs:
               rm -rf /var/www/controltec_old
               cp -r /var/www/controltec /var/www/controltec_old || true
               rm -rf /var/www/controltec
-              git clone https://github.com/conectainformatica25-lgtm/ControlTec.git /var/www/controltec
+              git clone https://github.com/thawanrodrigues/ControlTec.git /var/www/controltec
             fi
 
             cd /var/www/controltec
