@@ -183,26 +183,33 @@ export default function FinanceScreen() {
         )}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-        <View style={styles.tabBar}>
-          <TouchableOpacity style={[styles.tab, activeTab === 'lancamentos' && styles.tabActive]} onPress={() => setActiveTab('lancamentos')}>
-            <List size={16} color={activeTab === 'lancamentos' ? Theme.colors.accent : Theme.colors.textSecondary} />
-            <Text style={[styles.tabText, activeTab === 'lancamentos' && styles.tabTextActive]}>Lançamentos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === 'contas_pagar' && styles.tabActive]} onPress={() => setActiveTab('contas_pagar')}>
-            <CircleDollarSign size={16} color={activeTab === 'contas_pagar' ? Theme.colors.accent : Theme.colors.textSecondary} />
-            <Text style={[styles.tabText, activeTab === 'contas_pagar' && styles.tabTextActive]}>Contas a Pagar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === 'caixa_pessoal' && styles.tabActive]} onPress={() => setActiveTab('caixa_pessoal')}>
-            <Wallet size={16} color={activeTab === 'caixa_pessoal' ? Theme.colors.accent : Theme.colors.textSecondary} />
-            <Text style={[styles.tabText, activeTab === 'caixa_pessoal' && styles.tabTextActive]}>Caixa Pessoal</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, activeTab === 'credito' && styles.tabActive]} onPress={() => setActiveTab('credito')}>
-            <CreditCard size={16} color={activeTab === 'credito' ? Theme.colors.accent : Theme.colors.textSecondary} />
-            <Text style={[styles.tabText, activeTab === 'credito' && styles.tabTextActive]}>Crédito ao Cliente</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <View style={styles.tabBarWrapper}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.tabBarScroll}
+          contentContainerStyle={styles.tabBarScrollContent}
+        >
+          <View style={styles.tabBar}>
+            <TouchableOpacity style={[styles.tab, activeTab === 'lancamentos' && styles.tabActive]} onPress={() => setActiveTab('lancamentos')}>
+              <List size={16} color={activeTab === 'lancamentos' ? Theme.colors.accent : Theme.colors.textSecondary} />
+              <Text style={[styles.tabText, activeTab === 'lancamentos' && styles.tabTextActive]}>Lançamentos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'contas_pagar' && styles.tabActive]} onPress={() => setActiveTab('contas_pagar')}>
+              <CircleDollarSign size={16} color={activeTab === 'contas_pagar' ? Theme.colors.accent : Theme.colors.textSecondary} />
+              <Text style={[styles.tabText, activeTab === 'contas_pagar' && styles.tabTextActive]}>Contas a Pagar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'caixa_pessoal' && styles.tabActive]} onPress={() => setActiveTab('caixa_pessoal')}>
+              <Wallet size={16} color={activeTab === 'caixa_pessoal' ? Theme.colors.accent : Theme.colors.textSecondary} />
+              <Text style={[styles.tabText, activeTab === 'caixa_pessoal' && styles.tabTextActive]}>Caixa Pessoal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tab, activeTab === 'credito' && styles.tabActive]} onPress={() => setActiveTab('credito')}>
+              <CreditCard size={16} color={activeTab === 'credito' ? Theme.colors.accent : Theme.colors.textSecondary} />
+              <Text style={[styles.tabText, activeTab === 'credito' && styles.tabTextActive]}>Crédito ao Cliente</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
 
       {(activeTab === 'lancamentos' || activeTab === 'contas_pagar') ? (
         <>
@@ -366,17 +373,20 @@ const styles = StyleSheet.create({
   addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: Theme.colors.accent, paddingHorizontal: Theme.spacing.md, paddingVertical: Theme.spacing.sm, borderRadius: Theme.borderRadius.sm },
   addButtonBlock: { alignSelf: 'stretch', justifyContent: 'center' },
   addButtonText: { color: Theme.colors.textInverse, fontWeight: 'bold', marginLeft: Theme.spacing.xs },
-  tabBar: { flexDirection: 'row', backgroundColor: Theme.colors.surface, borderRadius: 10, padding: 4, gap: 6, alignItems: 'center' },
-  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, gap: 6, flexShrink: 0 },
+  tabBarWrapper: { marginBottom: Theme.spacing.md, flexGrow: 0, flexShrink: 0, alignSelf: 'flex-start' },
+  tabBarScroll: { flexGrow: 0, flexShrink: 0 },
+  tabBarScrollContent: { flexGrow: 0, alignItems: 'center' },
+  tabBar: { flexDirection: 'row', backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: 4, gap: 6, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: Theme.borderRadius.sm, gap: 6, flexShrink: 0 },
   tabActive: { backgroundColor: Theme.colors.inputBackground },
   tabText: { fontSize: 13, fontWeight: '600', color: Theme.colors.textSecondary },
-  tabTextActive: { color: Theme.colors.accent },
+  tabTextActive: { color: Theme.colors.accent, fontWeight: 'bold' },
   summaryCards: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.md, marginBottom: Theme.spacing.lg },
   summaryCardsMobile: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  summaryCard: { flexGrow: 1, minWidth: 120, backgroundColor: Theme.colors.surface, padding: Theme.spacing.md, borderRadius: Theme.borderRadius.md, borderLeftWidth: 5 },
+  summaryCard: { flexGrow: 1, minWidth: 140, backgroundColor: Theme.colors.surface, padding: Theme.spacing.md, borderRadius: Theme.borderRadius.md, borderLeftWidth: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
   summaryLabel: { fontSize: 12, color: Theme.colors.textSecondary, textTransform: 'uppercase', fontWeight: 'bold' },
-  summaryValue: { fontSize: 20, fontWeight: '900', marginTop: 4, color: Theme.colors.textPrimary },
-  card: { flex: 1, minHeight: 0, minWidth: 0, backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: Theme.spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  summaryValue: { fontSize: 22, fontWeight: '900', marginTop: 4, color: Theme.colors.textPrimary },
+  card: { flex: 1, minHeight: 200, minWidth: 0, backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: Theme.spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Theme.colors.inputBackground, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.sm, paddingHorizontal: Theme.spacing.md, marginBottom: Theme.spacing.lg, height: 44 },
   searchInput: { flex: 1, marginLeft: Theme.spacing.sm, fontSize: 15, color: Theme.colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' as any } }) },
   listContainer: { flex: 1 },
