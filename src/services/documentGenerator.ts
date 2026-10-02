@@ -900,6 +900,7 @@ export function generateReciboVenda(data: SaleReceiptData): void {
   const isThermal = paperSize === '80mm' || paperSize === '58mm';
   const thermalWidth = paperSize === '80mm' ? '300px' : '220px';
   const activeStyles = isThermal ? THERMAL_STYLES(thermalWidth) : BASE_STYLES;
+  const isPago = sale.status === 'Pago' || sale.status === 'Concluída' || sale.status === 'Recebido';
 
   const whatsappMsg = `*RECIBO ${docNum} - ${company.name}*\n\nCliente: ${clientName}\nData: ${date}\nTotal: ${total}\nForma de Pagamento: ${sale.paymentMethod}\nStatus: ${isPago ? 'PAGO' : 'PENDENTE'}\n\nPara visualizar o comprovante detalhado em PDF, solicite o arquivo.`;
 
