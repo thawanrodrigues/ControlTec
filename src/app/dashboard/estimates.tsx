@@ -219,8 +219,6 @@ export default function EstimatesScreen() {
     formDataRef.current = reset;
     setFormData(reset);
     setCartItems([]);
-  };
-    setCartItems([]);
     setGlobalDiscountType('value');
     setGlobalDiscountValue('0');
     setProductSearch('');
