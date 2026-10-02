@@ -901,9 +901,7 @@ export function generateReciboVenda(data: SaleReceiptData): void {
   const thermalWidth = paperSize === '80mm' ? '300px' : '220px';
   const activeStyles = isThermal ? THERMAL_STYLES(thermalWidth) : BASE_STYLES;
 
-  const isPago = sale.status === 'Pago' || sale.status === 'Concluída' || sale.status === 'Recebido';
-
-  const whatsappMsg = `*RECIBO ${docNum} - ${company.name}*\n\nCliente: ${clientName}\nData: ${date}\nTotal: ${total}\nForma de Pagamento: ${sale.paymentMethod}\nStatus: ${isPago ? 'PAGO' : 'PENDENTE'}\n\nDocumento sem valor fiscal.\nPara visualizar o comprovante detalhado em PDF, solicite o arquivo.`;
+  const whatsappMsg = `*RECIBO ${docNum} - ${company.name}*\n\nCliente: ${clientName}\nData: ${date}\nTotal: ${total}\nForma de Pagamento: ${sale.paymentMethod}\nStatus: ${isPago ? 'PAGO' : 'PENDENTE'}\n\nPara visualizar o comprovante detalhado em PDF, solicite o arquivo.`;
 
   const servicosRows = servicos.map(i => `
     <tr>
@@ -1015,10 +1013,6 @@ export function generateReciboVenda(data: SaleReceiptData): void {
     </div>
 
     <div class="body">
-      <div class="fiscal-notice">
-        ⚠ Documento sem valor fiscal — Comprovante de prestação de serviços / venda de peças
-      </div>
-
       <div class="section">
         <div class="section-title">Dados do Cliente</div>
         <div class="info-grid">
@@ -1137,8 +1131,7 @@ export function generateReciboVenda(data: SaleReceiptData): void {
     <div class="footer">
       <p>
         <strong>${company.name}</strong> — Sistema ControlTec<br/>
-        Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.<br/>
-        <em>Documento sem valor fiscal</em>
+        Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
       </p>
     </div>
   </div>
