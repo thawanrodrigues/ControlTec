@@ -104,6 +104,8 @@ export default function SalesScreen() {
   const [manualPrice, setManualPrice] = useState('');
   const [manualQty, setManualQty] = useState('1');
   const [manualType, setManualType] = useState<'servico' | 'produto'>('servico');
+  const [manualDiscount, setManualDiscount] = useState('');
+  const [manualWarranty, setManualWarranty] = useState('90 dias de garantia');
 
   // Modal de Novo Cliente Rápido
   const [customerModalVisible, setCustomerModalVisible] = useState(false);
@@ -211,18 +213,24 @@ export default function SalesScreen() {
     }
     const price = Math.max(0, parseFloat(manualPrice) || 0);
     const qty = Math.max(1, parseInt(manualQty) || 1);
-    const total = qty * price;
+    const discount = Math.max(0, parseFloat(manualDiscount) || 0);
+    const total = Math.max(0, (qty * price) - discount);
+
+    let finalName = manualName.trim();
+    if (manualWarranty && manualWarranty !== 'Sem garantia' && manualType === 'servico') {
+      finalName += ` (${manualWarranty})`;
+    }
 
     setItems((prev) => [
       ...prev,
       {
         id: `manual-${Date.now()}`,
         type: manualType,
-        name: manualName.trim(),
+        name: finalName,
         code: manualType === 'servico' ? 'SERVIÇO' : 'PEÇA',
         qty,
         unitPrice: price,
-        discount: 0,
+        discount,
         total
       }
     ]);
@@ -230,6 +238,8 @@ export default function SalesScreen() {
     setManualName('');
     setManualPrice('');
     setManualQty('1');
+    setManualDiscount('');
+    setManualWarranty('90 dias de garantia');
     setManualModalVisible(false);
   };
 
@@ -1216,6 +1226,54 @@ export default function SalesScreen() {
                       <option value="produto">📦 Peça / Produto</option>
                     </select>
                   </View>
+                </View>
+              </View>
+
+              {/* Linha de Desconto em R$ e Cálculo em Tempo Real */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Desconto (R$)</Text>
+                  <TextInput
+                    style={styles.inputField}
+                    placeholder="Ex: 10.00"
+                    placeholderTextColor="#8E8E93"
+                    keyboardType="numeric"
+                    value={manualDiscount}
+                    onChangeText={setManualDiscount}
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Total do Item</Text>
+                  <View style={[styles.inputField, { backgroundColor: '#ECFDF5', borderColor: '#10B981', justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#059669' }}>
+                      {formatCurrency(
+                        Math.max(
+                          0,
+                          ((parseFloat(manualPrice) || 0) * (parseInt(manualQty) || 1)) - (parseFloat(manualDiscount) || 0)
+                        )
+                      )}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Período de Garantia */}
+              <View>
+                <Text style={styles.label}>Período de Garantia</Text>
+                <View style={styles.selectWrapper}>
+                  <select
+                    style={styles.htmlSelect as any}
+                    value={manualWarranty}
+                    onChange={(e: any) => setManualWarranty(e.target.value)}
+                  >
+                    <option value="Sem garantia">Sem garantia</option>
+                    <option value="30 dias de garantia">30 dias de garantia</option>
+                    <option value="60 dias de garantia">60 dias de garantia</option>
+                    <option value="90 dias de garantia">90 dias de garantia (Padrão)</option>
+                    <option value="180 dias de garantia">180 dias (6 meses)</option>
+                    <option value="1 ano de garantia">1 ano de garantia</option>
+                  </select>
                 </View>
               </View>
             </View>
