@@ -97,20 +97,12 @@ const BASE_STYLES = `
   }
   .page {
     background: #fff;
-<<<<<<< HEAD
-    width: 760px;
-    max-width: 100%;
-=======
     max-width: 780px;
->>>>>>> origin/master
     margin: 0 auto;
     padding: 0;
     box-shadow: 0 0 40px rgba(0,0,0,0.12);
     position: relative;
-<<<<<<< HEAD
-=======
     overflow: hidden;
->>>>>>> origin/master
   }
   .header {
     background: #0F2A5A;
@@ -500,11 +492,7 @@ export function generateRecibo(data: DocumentData): void {
 
     <div class="header">
       <div class="header-left">
-<<<<<<< HEAD
-        ${LOGO_HTML}
-=======
         ${logoHeaderHtml}
->>>>>>> origin/master
         <div>
           <div class="company-name">${company.tradeName || company.name || 'ControlTec'}</div>
           <div class="company-info">
@@ -705,11 +693,7 @@ export function generateNotaServico(data: DocumentData): void {
 
     <div class="header">
       <div class="header-left">
-<<<<<<< HEAD
-        ${LOGO_HTML}
-=======
         ${logoHeaderHtml}
->>>>>>> origin/master
         <div>
           <div class="company-name">${company.tradeName || company.name || 'ControlTec'}</div>
           <div class="company-info">
@@ -724,14 +708,9 @@ export function generateNotaServico(data: DocumentData): void {
         <div class="doc-number">${docNum}</div>
         <div class="doc-date">Emissão: ${date}</div>
         ${validUntil !== '—' ? `<div class="doc-date">Válido até: ${validUntil}</div>` : ''}
-<<<<<<< HEAD
         ${estimate.warranty ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
-        <div style="margin-top:10px;">
-          <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status}</span>
-=======
         <div style="margin-top:8px;">
           <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status || 'Pendente'}</span>
->>>>>>> origin/master
         </div>
       </div>
     </div>
@@ -786,15 +765,6 @@ export function generateNotaServico(data: DocumentData): void {
         <div class="description-box">${estimate.notes}</div>
       </div>` : ''}
 
-<<<<<<< HEAD
-      <div class="guarantee-box" style="margin-bottom:24px;">
-        <div class="guarantee-icon">🛡️</div>
-        <div class="guarantee-text">
-          <h4>GARANTIA DOS SERVIÇOS</h4>
-          <p>${estimate.warranty ? `Este serviço possui garantia de <strong>${estimate.warranty}</strong>.` : 'Os serviços prestados possuem garantia conforme acordado com o cliente.'} Em caso de dúvidas, entre em contato com nossa empresa.</p>
-        </div>
-      </div>
-=======
       ${(() => {
         const info = getWarrantyInfo(estimate.createdAt, estimate.warrantyPeriod);
         return `
@@ -808,13 +778,14 @@ export function generateNotaServico(data: DocumentData): void {
                 <span>📅 <strong>Data de Emissão:</strong> ${info.startDateStr}</span>
                 <span>🗓️ <strong>Vencimento da Garantia:</strong> ${info.endDateStr}</span>
               </div>
+            ` : (estimate.warranty ? `
+              <p>Este serviço possui garantia de <strong>${estimate.warranty}</strong>. Em caso de dúvidas, entre em contato com nossa empresa.</p>
             ` : `
-              <p>Os serviços prestados possuem garantia legal contra defeitos de fabricação ou execução. Em caso de dúvidas, entre em contato com nossa empresa.</p>
-            `}
+              <p>Os serviços prestados possuem garantia conforme acordado com o cliente. Em caso de dúvidas, entre em contato com nossa empresa.</p>
+            `)}
           </div>
         </div>`;
       })()}
->>>>>>> origin/master
 
       <div class="total-section">
         <div>

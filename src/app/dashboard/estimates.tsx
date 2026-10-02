@@ -859,7 +859,6 @@ export default function EstimatesScreen() {
                   onChangeText={v => updateFormData({ validUntil: v })}
                 />
               </View>
-              </View>
             </ScrollView>
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
@@ -1002,5 +1001,4 @@ const styles = StyleSheet.create({
   totalSummaryDivider: { height: 1, backgroundColor: Theme.colors.border, marginVertical: 6 },
   totalSummaryLabelBold: { fontSize: 17, fontWeight: '900', color: Theme.colors.textPrimary },
   totalSummaryValueBold: { fontSize: 19, fontWeight: '900', color: '#10B981' },
->>>>>>> origin/master
 });
