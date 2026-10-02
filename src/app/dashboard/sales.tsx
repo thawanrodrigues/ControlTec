@@ -56,6 +56,7 @@ interface SaleItem {
   unitPrice: number;
   discount: number;
   total: number;
+  warranty?: string;
   originalId?: string;
 }
 
@@ -86,7 +87,7 @@ export default function SalesScreen() {
   const [paymentMethod, setPaymentMethod] = useState('Dinheiro');
   const [installments, setInstallments] = useState('À vista');
   const [observations, setObservations] = useState('');
-  const [warranty, setWarranty] = useState('90 dias de garantia');
+  const [warranty, setWarranty] = useState('Sem garantia');
 
   // Itens da Venda
   const [items, setItems] = useState<SaleItem[]>([]);
@@ -217,7 +218,7 @@ export default function SalesScreen() {
     const total = Math.max(0, (qty * price) - discount);
 
     let finalName = manualName.trim();
-    if (manualWarranty && manualWarranty !== 'Sem garantia' && manualType === 'servico') {
+    if (manualWarranty && manualWarranty !== 'Sem garantia' && !manualWarranty.toLowerCase().includes('sem garantia') && manualType === 'servico') {
       finalName += ` (${manualWarranty})`;
     }
 
@@ -231,15 +232,21 @@ export default function SalesScreen() {
         qty,
         unitPrice: price,
         discount,
+        warranty: manualWarranty,
         total
       }
     ]);
+
+    // Atualiza a garantia da venda com base na escolha do item
+    if (manualWarranty) {
+      setWarranty(manualWarranty);
+    }
 
     setManualName('');
     setManualPrice('');
     setManualQty('1');
     setManualDiscount('');
-    setManualWarranty('90 dias de garantia');
+    setManualWarranty('Sem garantia');
     setManualModalVisible(false);
   };
 
@@ -281,6 +288,7 @@ export default function SalesScreen() {
     setPaymentMethod('Dinheiro');
     setInstallments('À vista');
     setObservations('');
+    setWarranty('Sem garantia');
     setAmountReceivedText('');
   };
 
@@ -294,6 +302,13 @@ export default function SalesScreen() {
     setSaveLoading(true);
     try {
       const isFiado = paymentMethod === 'Fiado / A Prazo';
+
+      // Determina a garantia efetiva da venda
+      let effectiveWarranty: string | null = null;
+      if (warranty && warranty !== 'Sem garantia' && !warranty.toLowerCase().includes('sem garantia')) {
+        effectiveWarranty = warranty.trim();
+      }
+
       const salePayload = {
         customerId: selectedCustomerId || null,
         customerName: customerSearch.trim() || 'Consumidor Final',
@@ -304,13 +319,14 @@ export default function SalesScreen() {
           qty: i.qty,
           price: i.unitPrice,
           subtotal: i.total,
-          originalId: i.originalId || null
+          originalId: i.originalId || null,
+          warranty: i.warranty || null
         })),
         discount: totalDiscounts,
         paymentMethod,
         status: isFiado ? 'Pendente' : 'Pago',
         notes: observations.trim() || null,
-        warranty: warranty.trim() || null
+        warranty: effectiveWarranty
       };
 
       const savedSale = await api.create('sales', salePayload);
@@ -318,7 +334,10 @@ export default function SalesScreen() {
       if (generatePdf) {
         const fullCustomer = customers.find((c) => c.id === selectedCustomerId);
         generateReciboVenda({
-          sale: savedSale,
+          sale: {
+            ...savedSale,
+            warranty: effectiveWarranty
+          },
           customer: fullCustomer || { name: salePayload.customerName },
           company: savedSale.company || companyInfo
         });
@@ -769,12 +788,31 @@ export default function SalesScreen() {
                     </View>
                   </View>
 
+                  {/* Garantia */}
+                  <View style={[styles.formCol, { flex: 1.2 }]}>
+                    <Text style={styles.label}>Garantia</Text>
+                    <View style={styles.selectWrapper}>
+                      <select
+                        style={styles.htmlSelect as any}
+                        value={warranty}
+                        onChange={(e: any) => setWarranty(e.target.value)}
+                      >
+                        <option value="Sem garantia">Sem garantia</option>
+                        <option value="30 dias de garantia">30 dias</option>
+                        <option value="60 dias de garantia">60 dias</option>
+                        <option value="90 dias de garantia">90 dias</option>
+                        <option value="180 dias de garantia">180 dias (6 meses)</option>
+                        <option value="1 ano de garantia">1 ano</option>
+                      </select>
+                    </View>
+                  </View>
+
                   {/* Observações */}
-                  <View style={[styles.formCol, { flex: 1.8 }]}>
+                  <View style={[styles.formCol, { flex: 1.5 }]}>
                     <Text style={styles.label}>Observações</Text>
                     <TextInput
                       style={[styles.inputField, { height: 42 }]}
-                      placeholder="Ex.: Entrega, garantia, etc."
+                      placeholder="Ex.: Entrega, etc."
                       placeholderTextColor="#8E8E93"
                       value={observations}
                       onChangeText={setObservations}

@@ -708,7 +708,7 @@ export function generateNotaServico(data: DocumentData): void {
         <div class="doc-number">${docNum}</div>
         <div class="doc-date">Emissão: ${date}</div>
         ${validUntil !== '—' ? `<div class="doc-date">Válido até: ${validUntil}</div>` : ''}
-        ${estimate.warranty ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
+        ${estimate.warranty && estimate.warranty !== 'Sem garantia' && !estimate.warranty.toLowerCase().includes('sem garantia') ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
         <div style="margin-top:8px;">
           <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status || 'Pendente'}</span>
         </div>
@@ -767,6 +767,9 @@ export function generateNotaServico(data: DocumentData): void {
 
       ${(() => {
         const info = getWarrantyInfo(estimate.createdAt, estimate.warrantyPeriod);
+        const isSemGarantia = estimate.warranty && estimate.warranty.toLowerCase().includes('sem garantia');
+        if (isSemGarantia) return '';
+        if (!info && !estimate.warranty) return '';
         return `
         <div class="guarantee-box" style="margin-bottom:16px;">
           <div class="guarantee-icon">🛡️</div>
@@ -1101,7 +1104,7 @@ export function generateReciboVenda(data: SaleReceiptData): void {
         </div>
       </div>
 
-      ${sale.warranty ? `
+      ${sale.warranty && sale.warranty !== 'Sem garantia' && !sale.warranty.toLowerCase().includes('sem garantia') ? `
       <div class="section" style="margin-top:16px;">
         <div class="section-title">Garantia</div>
         <div class="description-box">🛡️ ${sale.warranty}</div>
