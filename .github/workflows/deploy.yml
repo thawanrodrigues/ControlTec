@@ -1,0 +1,75 @@
+name: Deploy ControlTec to VPS
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Executar Deploy via SSH no VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST || '2.25.109.173' }}
+          username: ${{ secrets.VPS_USERNAME || 'root' }}
+          password: ${{ secrets.VPS_PASSWORD || 'Conecta211895@' }}
+          port: 22
+          script: |
+            echo "🚀 Iniciando Deploy do ControlTec no servidor VPS..."
+            
+            # Garante a existência do repositório clonado no servidor
+            if [ ! -d "/var/www/controltec/.git" ]; then
+              echo "📦 Clonando repositório GitHub no servidor..."
+              rm -rf /var/www/controltec_old
+              cp -r /var/www/controltec /var/www/controltec_old || true
+              rm -rf /var/www/controltec
+              git clone https://github.com/conectainformatica25-lgtm/ControlTec.git /var/www/controltec
+            fi
+
+            cd /var/www/controltec
+            echo "🔄 Atualizando código para a última versão do GitHub..."
+            git fetch origin
+            git reset --hard origin/master || git reset --hard origin/main
+
+            # Configurando e Compilando Backend
+            echo "⚙️  Configurando e Compilando Backend (Prisma / TypeScript)..."
+            cd /var/www/controltec/server
+            echo "DATABASE_URL=postgresql://controltec:controltec_pass@localhost:5432/controltecdb?schema=public" > .env
+            echo "PORT=3000" >> .env
+            echo "JWT_SECRET=supersecret123" >> .env
+
+            npm install --production=false
+            sed -i 's/provider = "sqlite"/provider = "postgresql"/g' prisma/schema.prisma
+            npx prisma generate
+            npx prisma db push --accept-data-loss=false
+            npm run build
+
+            # Configurando e Compilando Frontend (PWA)
+            echo "🌐 Configurando e Compilando Frontend Web (Expo / PWA)..."
+            cd /var/www/controltec
+            echo "EXPO_PUBLIC_API_URL=https://app1.conectasistemas.sbs/api" > .env
+            npm install --production=false
+            npm run build:web
+
+            # Permissões do Nginx
+            echo "🔒 Aplicando permissões de acesso..."
+            chown -R www-data:www-data /var/www/controltec
+            chmod -R 755 /var/www/controltec
+
+            # Reiniciando PM2
+            echo "⚡ Reiniciando Backend no PM2..."
+            cd /var/www/controltec/server
+            pm2 restart controltec-api || pm2 start dist/index.js --name "controltec-api"
+            pm2 save
+
+            echo "✅ DEPLOY AUTOMÁTICO CONCLUÍDO COM SUCESSO!"
+            echo "🌐 Acesse: https://app1.conectasistemas.sbs"

@@ -1,6 +1,6 @@
 /**
  * documentGenerator.ts
- * Geração de Recibos e Notas de Serviço em PDF via Web Print API
+ * Geração de Recibos, Notas de Serviço e Orçamentos em PDF / Impressão Térmica
  */
 
 export interface DocumentData {
@@ -14,6 +14,9 @@ export interface DocumentData {
     notes?: string;
     createdAt?: string;
     warranty?: string;
+    warrantyPeriod?: number | string;
+    paymentMethod?: string;
+    validUntil?: string;
   };
   customer: {
     name: string;
@@ -24,16 +27,30 @@ export interface DocumentData {
   };
   company: {
     name: string;
+    tradeName?: string;
     cnpj?: string;
     phone?: string;
     email?: string;
     address?: string;
+    logo?: string;
   };
 }
 
-const LOGO_HTML = `
-  <div style="width: 36px; height: 36px; background: #0F2A5A; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-family: 'Arial Black', sans-serif; font-size: 14px; font-weight: 900; color: #FFB703; line-height: 1; flex-shrink: 0;">CT</div>
+const DEFAULT_LOGO_SVG = `
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="36" height="36" rx="8" fill="#0F2A5A"/>
+    <text x="18" y="24" font-family="Arial Black, sans-serif" font-size="14" font-weight="900" fill="#FFB703" text-anchor="middle">CT</text>
+  </svg>
 `;
+const LOGO_HTML = DEFAULT_LOGO_SVG;
+
+function getCompanyLogo(company: { logo?: string }): string | null {
+  if (company && company.logo) return company.logo;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return localStorage.getItem('controltec_company_logo');
+  }
+  return null;
+}
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -42,6 +59,21 @@ function formatCurrency(value: number): string {
 function formatDate(dateStr?: string): string {
   const date = dateStr ? new Date(dateStr) : new Date();
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getWarrantyInfo(createdAt?: string, warrantyPeriod?: number | string) {
+  if (!warrantyPeriod || Number(warrantyPeriod) <= 0) return null;
+  const periodMonths = Number(warrantyPeriod);
+  const startDate = createdAt ? new Date(createdAt) : new Date();
+  const endDate = new Date(startDate);
+  endDate.setMonth(endDate.getMonth() + periodMonths);
+
+  return {
+    months: periodMonths,
+    periodText: `${periodMonths} ${periodMonths === 1 ? 'mês' : 'meses'}`,
+    startDateStr: formatDate(startDate.toISOString()),
+    endDateStr: formatDate(endDate.toISOString()),
+  };
 }
 
 function getDocNumber(id: string): string {
@@ -59,32 +91,47 @@ function parseItems(itemsStr?: string): Array<{ name: string; qty: number; price
 const BASE_STYLES = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
     background: #f4f6fb;
-    min-height: 100vh;
     padding: 0;
   }
   .page {
     background: #fff;
+<<<<<<< HEAD
     width: 760px;
     max-width: 100%;
+=======
+    max-width: 780px;
+>>>>>>> origin/master
     margin: 0 auto;
     padding: 0;
     box-shadow: 0 0 40px rgba(0,0,0,0.12);
     position: relative;
+<<<<<<< HEAD
+=======
+    overflow: hidden;
+>>>>>>> origin/master
   }
   .header {
     background: #0F2A5A;
     color: #fff;
-    padding: 28px 40px 22px;
+    padding: 24px 32px 20px;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
   }
-  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-logo {
+    max-height: 56px;
+    max-width: 140px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 4px;
+  }
   .company-name { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
   .company-name span { color: #FFB703; }
-  .company-info { font-size: 12px; opacity: 0.75; margin-top: 4px; line-height: 1.6; }
+  .company-info { font-size: 12px; opacity: 0.85; margin-top: 4px; line-height: 1.5; }
   .doc-badge {
     text-align: right;
   }
@@ -95,12 +142,12 @@ const BASE_STYLES = `
     letter-spacing: 1px;
     text-transform: uppercase;
   }
-  .doc-number { font-size: 13px; opacity: 0.7; margin-top: 4px; }
-  .doc-date { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+  .doc-number { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+  .doc-date { font-size: 12px; opacity: 0.7; margin-top: 2px; }
 
-  .body { padding: 32px 40px; }
+  .body { padding: 24px 32px; position: relative; z-index: 1; }
 
-  .section { margin-bottom: 24px; }
+  .section { margin-bottom: 16px; }
   .section-title {
     font-size: 11px;
     font-weight: 700;
@@ -113,10 +160,10 @@ const BASE_STYLES = `
   }
 
   .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; }
-  .info-item label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
+  .info-item label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
   .info-item p { font-size: 14px; color: #1C1C1E; font-weight: 500; margin-top: 2px; }
 
-  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
   .items-table th {
     background: #f0f3f8;
     padding: 10px 12px;
@@ -151,51 +198,50 @@ const BASE_STYLES = `
     background: #0F2A5A;
     color: #fff;
     border-radius: 10px;
-    padding: 20px 28px;
+    padding: 16px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 24px;
+    margin-top: 18px;
   }
-  .total-label { font-size: 13px; font-weight: 600; opacity: 0.8; }
-  .total-value { font-size: 28px; font-weight: 900; color: #FFB703; }
+  .total-label { font-size: 13px; font-weight: 600; opacity: 0.85; }
+  .total-value { font-size: 26px; font-weight: 900; color: #FFB703; }
 
   .signature-section {
-    margin-top: 36px;
+    margin-top: 28px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 40px;
   }
   .signature-box { text-align: center; }
   .signature-line {
-    border-top: 1px solid #ccc;
+    border-top: 1px solid #cbd5e1;
     margin-bottom: 8px;
     padding-top: 8px;
   }
-  .signature-label { font-size: 12px; color: #888; }
+  .signature-label { font-size: 12px; color: #64748b; }
   .signature-name { font-size: 13px; font-weight: 600; color: #1C1C1E; margin-top: 2px; }
 
   .footer {
     background: #f0f3f8;
-    padding: 16px 40px;
+    padding: 14px 32px;
     text-align: center;
-    margin-top: 32px;
+    margin-top: 20px;
     border-top: 2px solid #e8ecf4;
   }
-  .footer p { font-size: 12px; color: #888; line-height: 1.7; }
+  .footer p { font-size: 12px; color: #64748b; line-height: 1.6; }
   .footer strong { color: #0F2A5A; }
 
   .stamp {
     display: inline-block;
     border: 3px solid;
     border-radius: 8px;
-    padding: 6px 16px;
-    font-size: 13px;
+    padding: 4px 12px;
+    font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    transform: rotate(-8deg);
-    margin-top: 12px;
+    letter-spacing: 1.5px;
+    margin-top: 8px;
   }
   .stamp.aprovado { color: #10B981; border-color: #10B981; }
   .stamp.pendente { color: #F59E0B; border-color: #F59E0B; }
@@ -217,20 +263,67 @@ const THERMAL_STYLES = (width: string) => `
   body {
     font-family: 'Courier New', Courier, monospace;
     background: #fff; color: #000;
-    padding: 5px; width: ${width}; margin: 0 auto;
+    padding: 6px; width: ${width}; margin: 0 auto;
     font-size: 12px;
   }
-  .page { width: 100%; box-shadow: none; padding: 0; }
-  .header { background: transparent; color: #000; padding: 0 0 10px 0; text-align: center; border-bottom: 1px dashed #000; display: block; }
+  .page {
+    width: 100%;
+    box-shadow: none;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Marca d'água no cupom solicitada pelo usuário */
+  .watermark-cupom {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.10;
+    pointer-events: none;
+    z-index: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 80%;
+    height: 70%;
+  }
+  .watermark-cupom img {
+    max-width: 180px;
+    max-height: 180px;
+    object-fit: contain;
+    filter: grayscale(100%);
+  }
+
+  .header {
+    background: transparent;
+    color: #000;
+    padding: 0 0 10px 0;
+    text-align: center;
+    border-bottom: 1px dashed #000;
+    display: block;
+    position: relative;
+    z-index: 1;
+  }
   .header-left { display: block; }
-  .company-name { font-size: 16px; font-weight: bold; }
+  .header-logo {
+    max-height: 40px;
+    max-width: 100px;
+    object-fit: contain;
+    margin: 0 auto 6px auto;
+    display: block;
+    filter: grayscale(100%);
+  }
+  .company-name { font-size: 15px; font-weight: bold; }
   .company-name span { color: #000; }
   .company-info { font-size: 10px; margin-top: 4px; }
-  .doc-badge { text-align: center; margin-top: 10px; }
-  .doc-type { font-size: 14px; font-weight: bold; }
+  .doc-badge { text-align: center; margin-top: 8px; }
+  .doc-type { font-size: 13px; font-weight: bold; }
   .doc-number, .doc-date { font-size: 10px; }
-  .body { padding: 10px 0; }
-  .section { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+  
+  .body { padding: 8px 0; position: relative; z-index: 1; }
+  .section { margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px; }
   .section-title { font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 5px; border-bottom: none; }
   .info-grid { display: block; }
   .info-item { margin-bottom: 4px; }
@@ -240,18 +333,17 @@ const THERMAL_STYLES = (width: string) => `
   .items-table th { background: transparent; color: #000; padding: 2px 0; border-bottom: 1px solid #000; }
   .items-table td { padding: 2px 0; border-bottom: 1px dashed #ccc; }
   .description-box { font-size: 10px; padding: 5px; border: none; background: transparent; }
-  .total-section { background: transparent; color: #000; padding: 10px 0; text-align: right; display: block; border-bottom: 1px dashed #000; border-radius: 0; margin-top: 0; }
-  .total-label { font-size: 12px; font-weight: bold; }
-  .total-value { font-size: 16px; font-weight: bold; }
-  .signature-section { display: block; margin-top: 20px; }
-  .signature-box { margin-bottom: 20px; }
+  .total-section { background: transparent; color: #000; padding: 8px 0; text-align: right; display: block; border-bottom: 1px dashed #000; border-radius: 0; margin-top: 0; }
+  .total-label { font-size: 11px; font-weight: bold; }
+  .total-value { font-size: 15px; font-weight: bold; }
+  .signature-section { display: block; margin-top: 18px; }
+  .signature-box { margin-bottom: 16px; }
   .signature-line { border-top: 1px dashed #000; }
-  .footer { background: transparent; padding: 10px 0; text-align: center; border-top: none; }
+  .footer { background: transparent; padding: 8px 0; text-align: center; border-top: none; }
   .footer p { font-size: 9px; color: #000; }
   .stamp { border-color: #000 !important; color: #000 !important; font-size: 10px; padding: 2px 6px; }
   .header-left svg { display: none; }
-  .watermark { display: none; }
-  .guarantee-box { border: 1px dashed #000; background: transparent; padding: 5px; margin-bottom: 10px; border-radius: 0;}
+  .guarantee-box { border: 1px dashed #000; background: transparent; padding: 5px; margin-bottom: 10px; border-radius: 0; }
   .guarantee-icon { display: none; }
   .guarantee-text h4 { color: #000; font-size: 10px; }
   .guarantee-text p { font-size: 9px; color: #000; }
@@ -267,7 +359,7 @@ const ACTION_BAR = (docType: string, whatsappText: string) => `
     padding: 14px 24px;
     display: flex; justify-content: center; gap: 16px;
     box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-    z-index: 100;
+    z-index: 1000;
   ">
     <button onclick="window.print()" style="
       background: #FFB703; color: #0F2A5A; border: none;
@@ -333,14 +425,12 @@ const ACTION_BAR = (docType: string, whatsappText: string) => `
         const file = new File([pdfBlob], '${docType}.pdf', { type: 'application/pdf' });
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          // Celular / PC compatível
           await navigator.share({
             title: '${docType}',
-            text: \`${whatsappText}\`,
+            text: decodeURIComponent('${encodeURIComponent(whatsappText)}'),
             files: [file]
           });
         } else {
-          // Fallback para PC (WhatsApp Web não aceita arquivo via link)
           alert("O seu navegador de PC não suporta envio direto. O PDF será baixado automaticamente e o WhatsApp abrirá para você anexá-lo!");
           
           const url = window.URL.createObjectURL(pdfBlob);
@@ -353,7 +443,7 @@ const ACTION_BAR = (docType: string, whatsappText: string) => `
           window.URL.revokeObjectURL(url);
           
           setTimeout(() => {
-             window.open('https://wa.me/?text=' + encodeURIComponent(\`${whatsappText}\`), '_blank');
+             window.open('https://wa.me/?text=' + '${encodeURIComponent(whatsappText)}', '_blank');
           }, 1000);
         }
       } catch (err) {
@@ -378,7 +468,12 @@ export function generateRecibo(data: DocumentData): void {
   const thermalWidth = paperSize === '80mm' ? '300px' : '220px';
   const activeStyles = isThermal ? THERMAL_STYLES(thermalWidth) : BASE_STYLES;
 
-  const whatsappMsg = `*RECIBO DE SERVIÇO - ${company.name}*\n\nCliente: ${customer.name}\nDoc: ${docNum}\nData: ${date}\nTotal: ${total}\n\nPara visualizar o recibo completo, solicite o arquivo PDF.`;
+  const logo = getCompanyLogo(company);
+  const logoHeaderHtml = logo 
+    ? `<img class="header-logo" src="${logo}" alt="${company.name || 'Logo'}" />` 
+    : DEFAULT_LOGO_SVG;
+
+  const whatsappMsg = `*RECIBO DE VENDA / SERVIÇO - ${company.name}*\n\nCliente: ${customer.name}\nDoc: ${docNum}\nData: ${date}\nTotal: ${total}\n\nPara visualizar o recibo completo, solicite o arquivo PDF.`;
 
   const itemsRows = items.length > 0
     ? items.map(i => `
@@ -401,11 +496,17 @@ export function generateRecibo(data: DocumentData): void {
 </head>
 <body>
   <div class="page">
+    ${isThermal && logo ? `<div class="watermark-cupom"><img src="${logo}" alt="" /></div>` : ''}
+
     <div class="header">
       <div class="header-left">
+<<<<<<< HEAD
         ${LOGO_HTML}
+=======
+        ${logoHeaderHtml}
+>>>>>>> origin/master
         <div>
-          <div class="company-name">Control<span>Tec</span></div>
+          <div class="company-name">${company.tradeName || company.name || 'ControlTec'}</div>
           <div class="company-info">
             ${company.name}<br/>
             ${company.cnpj ? `CNPJ: ${company.cnpj}` : ''}<br/>
@@ -419,7 +520,7 @@ export function generateRecibo(data: DocumentData): void {
         <div class="doc-date">Data: ${date}</div>
         ${estimate.warranty ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
         <div style="margin-top:10px;">
-          <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status}</span>
+          <span class="stamp ${estimate.status === 'Aprovado' || estimate.status === 'Recebido' ? 'aprovado' : 'pendente'}">${estimate.status || 'Concluído'}</span>
         </div>
       </div>
     </div>
@@ -440,7 +541,7 @@ export function generateRecibo(data: DocumentData): void {
       </div>
 
       <div class="section">
-        <div class="section-title">Serviços / Itens</div>
+        <div class="section-title">Produtos / Serviços</div>
         <table class="items-table">
           <thead>
             <tr>
@@ -462,23 +563,46 @@ export function generateRecibo(data: DocumentData): void {
         <div class="description-box">${estimate.notes}</div>
       </div>` : ''}
 
+      ${(() => {
+        const info = getWarrantyInfo(estimate.createdAt, estimate.warrantyPeriod);
+        if (!info) return '';
+        return `
+        <div class="guarantee-box" style="margin-bottom:16px;">
+          <div class="guarantee-icon">🛡️</div>
+          <div class="guarantee-text" style="width: 100%;">
+            <h4>GARANTIA DOS PRODUTOS / SERVIÇOS</h4>
+            <p style="margin-bottom: 6px;">Esta venda possui garantia de <strong>${info.periodText}</strong> a partir da data de emissão.</p>
+            <div style="display: flex; gap: 16px; margin-top: 6px; font-size: 12px; color: #166534; background: rgba(22, 101, 52, 0.06); padding: 6px 10px; border-radius: 6px; font-weight: 600;">
+              <span>📅 Data de Emissão: <strong>${info.startDateStr}</strong></span>
+              <span>🗓️ Válida até: <strong>${info.endDateStr}</strong></span>
+            </div>
+          </div>
+        </div>`;
+      })()}
+
+      ${estimate.paymentMethod ? `
+      <div style="background:#f8f9fc;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Forma de Pagamento</span>
+        <span style="font-size:14px;font-weight:700;color:#0F2A5A;">${estimate.paymentMethod}</span>
+      </div>` : ''}
+
       <div class="total-section">
         <div>
-          <div class="total-label">VALOR TOTAL RECEBIDO</div>
-          <div style="font-size:12px;opacity:0.6;margin-top:2px;">Referente aos serviços descritos acima</div>
+          <div class="total-label">VALOR TOTAL</div>
+          <div style="font-size:12px;opacity:0.75;margin-top:2px;">Referente aos itens e serviços descritos</div>
         </div>
         <div class="total-value">${total}</div>
       </div>
 
       <div class="signature-section">
         <div class="signature-box">
-          <div style="height:50px;"></div>
+          <div style="height:40px;"></div>
           <div class="signature-line"></div>
           <div class="signature-label">Assinatura do Responsável</div>
           <div class="signature-name">${company.name}</div>
         </div>
         <div class="signature-box">
-          <div style="height:50px;"></div>
+          <div style="height:40px;"></div>
           <div class="signature-line"></div>
           <div class="signature-label">Assinatura do Cliente</div>
           <div class="signature-name">${customer.name}</div>
@@ -489,7 +613,6 @@ export function generateRecibo(data: DocumentData): void {
     <div class="footer">
       <p>
         <strong>${company.name}</strong> — Sistema ControlTec<br/>
-        Este recibo confirma o pagamento dos serviços prestados descritos acima.<br/>
         Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
       </p>
     </div>
@@ -519,7 +642,15 @@ export function generateNotaServico(data: DocumentData): void {
   const thermalWidth = paperSize === '80mm' ? '300px' : '220px';
   const activeStyles = isThermal ? THERMAL_STYLES(thermalWidth) : BASE_STYLES;
 
-  const whatsappMsg = `*NOTA DE SERVIÇO - ${company.name}*\n\nCliente: ${customer.name}\nNúmero: ${docNum}\nData: ${date}\nTotal: ${total}\nStatus: ${estimate.status}\n\nPara visualizar a nota completa, solicite o arquivo PDF.`;
+  const logo = getCompanyLogo(company);
+  const logoHeaderHtml = logo 
+    ? `<img class="header-logo" src="${logo}" alt="${company.name || 'Logo'}" />` 
+    : DEFAULT_LOGO_SVG;
+
+  const isOrcamento = estimate.status === 'Pendente' || estimate.status === 'Em Aberto' || !estimate.status;
+  const docTitle = isOrcamento ? 'Orçamento de Serviço' : 'Nota de Serviço';
+
+  const whatsappMsg = `*${docTitle.toUpperCase()} - ${company.name}*\n\nCliente: ${customer.name}\nNúmero: ${docNum}\nData: ${date}\nTotal: ${total}\nStatus: ${estimate.status}\n\nPara visualizar o documento completo, solicite o arquivo PDF.`;
 
   const itemsRows = items.length > 0
     ? items.map(i => `
@@ -537,30 +668,24 @@ export function generateNotaServico(data: DocumentData): void {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Nota de Serviço ${docNum} - ${company.name}</title>
+  <title>${docTitle} ${docNum} - ${company.name}</title>
   <style>
     ${activeStyles}
     .watermark {
       position: absolute;
       top: 50%; left: 50%;
-      transform: translate(-50%, -50%) rotate(-35deg);
-      font-size: 90px;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 80px;
       font-weight: 900;
       color: rgba(15, 42, 90, 0.04);
       pointer-events: none;
       z-index: 0;
       white-space: nowrap;
-      letter-spacing: 8px;
+      letter-spacing: 6px;
       text-transform: uppercase;
     }
-    .timeline { position: relative; padding-left: 24px; }
-    .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: #e8ecf4; }
-    .timeline-item { position: relative; margin-bottom: 14px; }
-    .timeline-dot { position: absolute; left: -24px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #FFB703; border: 2px solid #0F2A5A; }
-    .timeline-text { font-size: 13px; color: #555; }
-    .timeline-title { font-weight: 700; color: #0F2A5A; }
     .guarantee-box {
-      background: linear-gradient(135deg, #f0f7f0 0%, #e8f5e8 100%);
+      background: linear-gradient(135deg, #f0fdf4 0%, #e8f5e8 100%);
       border: 1.5px solid #10B981;
       border-radius: 10px;
       padding: 16px 20px;
@@ -568,19 +693,25 @@ export function generateNotaServico(data: DocumentData): void {
       align-items: flex-start;
       gap: 14px;
     }
-    .guarantee-icon { font-size: 28px; }
+    .guarantee-icon { font-size: 26px; }
     .guarantee-text h4 { color: #10B981; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-    .guarantee-text p { font-size: 12px; color: #555; line-height: 1.6; }
+    .guarantee-text p { font-size: 12px; color: #475569; line-height: 1.6; }
   </style>
 </head>
 <body>
-  <div class="watermark">ControlTec</div>
   <div class="page">
+    ${isThermal && logo ? `<div class="watermark-cupom"><img src="${logo}" alt="" /></div>` : ''}
+    ${!isThermal ? `<div class="watermark">${company.tradeName || company.name || 'ControlTec'}</div>` : ''}
+
     <div class="header">
       <div class="header-left">
+<<<<<<< HEAD
         ${LOGO_HTML}
+=======
+        ${logoHeaderHtml}
+>>>>>>> origin/master
         <div>
-          <div class="company-name">Control<span>Tec</span></div>
+          <div class="company-name">${company.tradeName || company.name || 'ControlTec'}</div>
           <div class="company-info">
             ${company.name}<br/>
             ${company.cnpj ? `CNPJ: ${company.cnpj}` : ''}<br/>
@@ -589,19 +720,24 @@ export function generateNotaServico(data: DocumentData): void {
         </div>
       </div>
       <div class="doc-badge">
-        <div class="doc-type">Nota de Serviço</div>
+        <div class="doc-type">${docTitle}</div>
         <div class="doc-number">${docNum}</div>
         <div class="doc-date">Emissão: ${date}</div>
         ${validUntil !== '—' ? `<div class="doc-date">Válido até: ${validUntil}</div>` : ''}
+<<<<<<< HEAD
         ${estimate.warranty ? `<div class="doc-date">Garantia: ${estimate.warranty}</div>` : ''}
         <div style="margin-top:10px;">
           <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status}</span>
+=======
+        <div style="margin-top:8px;">
+          <span class="stamp ${estimate.status === 'Aprovado' ? 'aprovado' : 'pendente'}">${estimate.status || 'Pendente'}</span>
+>>>>>>> origin/master
         </div>
       </div>
     </div>
 
     <div class="body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
         <div class="section" style="margin-bottom:0;">
           <div class="section-title">Prestador de Serviço</div>
           <div class="info-grid" style="grid-template-columns:1fr;">
@@ -612,7 +748,7 @@ export function generateNotaServico(data: DocumentData): void {
           </div>
         </div>
         <div class="section" style="margin-bottom:0;">
-          <div class="section-title">Contratante</div>
+          <div class="section-title">Contratante / Cliente</div>
           <div class="info-grid" style="grid-template-columns:1fr;">
             <div class="info-item"><label>Nome</label><p>${customer.name}</p></div>
             ${customer.document ? `<div class="info-item"><label>CPF/CNPJ</label><p>${customer.document}</p></div>` : ''}
@@ -623,12 +759,12 @@ export function generateNotaServico(data: DocumentData): void {
       </div>
 
       <div class="section">
-        <div class="section-title">Descrição dos Serviços</div>
+        <div class="section-title">Descrição dos Serviços / Equipamento</div>
         <div class="description-box">${estimate.description}</div>
       </div>
 
       <div class="section">
-        <div class="section-title">Itens e Valores</div>
+        <div class="section-title">Itens, Peças e Mão de Obra</div>
         <table class="items-table">
           <thead>
             <tr>
@@ -650,6 +786,7 @@ export function generateNotaServico(data: DocumentData): void {
         <div class="description-box">${estimate.notes}</div>
       </div>` : ''}
 
+<<<<<<< HEAD
       <div class="guarantee-box" style="margin-bottom:24px;">
         <div class="guarantee-icon">🛡️</div>
         <div class="guarantee-text">
@@ -657,24 +794,45 @@ export function generateNotaServico(data: DocumentData): void {
           <p>${estimate.warranty ? `Este serviço possui garantia de <strong>${estimate.warranty}</strong>.` : 'Os serviços prestados possuem garantia conforme acordado com o cliente.'} Em caso de dúvidas, entre em contato com nossa empresa.</p>
         </div>
       </div>
+=======
+      ${(() => {
+        const info = getWarrantyInfo(estimate.createdAt, estimate.warrantyPeriod);
+        return `
+        <div class="guarantee-box" style="margin-bottom:16px;">
+          <div class="guarantee-icon">🛡️</div>
+          <div class="guarantee-text" style="width: 100%;">
+            <h4>GARANTIA DOS SERVIÇOS E PEÇAS</h4>
+            ${info ? `
+              <p style="margin-bottom: 6px;">Esta nota cobre garantia de <strong>${info.periodText}</strong> a partir da data de emissão:</p>
+              <div style="display: flex; gap: 20px; margin-top: 6px; font-size: 12px; color: #166534; background: rgba(22, 101, 52, 0.08); padding: 8px 12px; border-radius: 6px; font-weight: 600;">
+                <span>📅 <strong>Data de Emissão:</strong> ${info.startDateStr}</span>
+                <span>🗓️ <strong>Vencimento da Garantia:</strong> ${info.endDateStr}</span>
+              </div>
+            ` : `
+              <p>Os serviços prestados possuem garantia legal contra defeitos de fabricação ou execução. Em caso de dúvidas, entre em contato com nossa empresa.</p>
+            `}
+          </div>
+        </div>`;
+      })()}
+>>>>>>> origin/master
 
       <div class="total-section">
         <div>
-          <div class="total-label">VALOR TOTAL DOS SERVIÇOS</div>
-          <div style="font-size:12px;opacity:0.6;margin-top:2px;">Inclui mão de obra e peças descritas</div>
+          <div class="total-label">VALOR TOTAL DO DOCUMENTO</div>
+          <div style="font-size:12px;opacity:0.75;margin-top:2px;">Inclui peças, insumos e mão de obra</div>
         </div>
         <div class="total-value">${total}</div>
       </div>
 
       <div class="signature-section">
         <div class="signature-box">
-          <div style="height:50px;"></div>
+          <div style="height:35px;"></div>
           <div class="signature-line"></div>
           <div class="signature-label">Prestador dos Serviços</div>
           <div class="signature-name">${company.name}</div>
         </div>
         <div class="signature-box">
-          <div style="height:50px;"></div>
+          <div style="height:35px;"></div>
           <div class="signature-line"></div>
           <div class="signature-label">Contratante (Ciente dos Serviços)</div>
           <div class="signature-name">${customer.name}</div>
@@ -684,14 +842,13 @@ export function generateNotaServico(data: DocumentData): void {
 
     <div class="footer">
       <p>
-        <strong>Nota de Serviço — ${company.name}</strong> | Sistema ControlTec<br/>
-        Este documento certifica a prestação dos serviços descritos acima.<br/>
+        <strong>${docTitle} — ${company.name}</strong> | Sistema ControlTec<br/>
         Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
       </p>
     </div>
   </div>
 
-  ${ACTION_BAR('Nota de Serviço', whatsappMsg)}
+  ${ACTION_BAR(docTitle, whatsappMsg)}
 </body>
 </html>`;
 

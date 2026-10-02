@@ -23,8 +23,32 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {
-  await prisma.customer.delete({ where: { id: (req.params.id as string) } });
-  res.json({ ok: true });
+  try {
+    const customerId = req.params.id as string;
+    const companyId = (req as any).companyId;
+
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, companyId }
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Cliente não encontrado' });
+    }
+
+    // 1. Delete associated orders, estimates, schedules and devices
+    await prisma.serviceOrder.deleteMany({ where: { customerId } });
+    await prisma.estimate.deleteMany({ where: { customerId } });
+    await prisma.schedule.deleteMany({ where: { customerId } });
+    await prisma.device.deleteMany({ where: { customerId } });
+
+    // 2. Delete customer
+    await prisma.customer.delete({ where: { id: customerId } });
+    
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error('[Delete Customer Error]:', error);
+    res.status(400).json({ error: 'Erro ao excluir cliente: ' + error.message });
+  }
 });
 
 export { router as customerRoutes };

@@ -12,65 +12,51 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Theme } from '../ui/themes';
-import { Lock, Mail, ChevronRight, AlertCircle, Settings } from 'lucide-react-native';
-import { api } from '../services/api';
+import { Theme } from '../../ui/themes';
+import { Lock, User, ChevronRight, AlertCircle, ArrowLeft } from 'lucide-react-native';
+import { api } from '../../services/api';
+import { storage } from '../../services/storage';
 
-export default function LoginScreen() {
+export default function AdminLoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Auto-login se já possuir um token de acesso válido salvo no dispositivo
   useEffect(() => {
-    const checkExistingToken = async () => {
-      try {
-        await api.init();
-        const role = api.getUserRole();
-        // Se já tiver token, redireciona para a tela inicial
-        if (role) {
-          router.replace('/dashboard');
-        }
-      } catch (e) {
-        console.log('[LoginScreen] Sem token ativo ou erro no auto-login:', e);
+    // Verificar se o admin já está logado
+    const checkLogged = async () => {
+      const token = await storage.getItem('adminToken');
+      if (token) {
+        router.replace('/admin/dashboard');
       }
     };
-    checkExistingToken();
+    checkLogged();
   }, []);
 
-  const handleEmailChange = (text: string) => {
-    setEmail(text);
-    if (errorMsg) setErrorMsg('');
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    if (errorMsg) setErrorMsg('');
-  };
-
-  const handleLogin = async () => {
-    console.log('[LoginScreen] handleLogin called', { email });
+  const handleAdminLogin = async () => {
     setErrorMsg('');
-    if (!email || !password) {
+    if (!username || !password) {
       setErrorMsg('Por favor, preencha todos os campos');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('[LoginScreen] calling api.login...');
-      const response = await api.login(email, password);
-      console.log('[LoginScreen] login successful, setting token...');
-      await api.setToken(response.token);
-      await api.setUserRole(response.user.role);
+      if (username !== 'admin' || password !== '211895') {
+        throw new Error('Credenciais administrativas inválidas');
+      }
+
+      console.log('[AdminLogin] Attempting admin login...');
+      const response = await api.adminLogin(password);
+      console.log('[AdminLogin] Admin login successful!');
       
-      console.log('[LoginScreen] redirecting to /dashboard...');
-      router.replace('/dashboard');
+      await api.setAdminToken(response.token);
+      router.replace('/admin/dashboard');
     } catch (error: any) {
-      console.error('[LoginScreen] login failed:', error);
-      setErrorMsg(error.message || 'Erro ao realizar login. Tente novamente.');
+      console.error('[AdminLogin] Admin login failed:', error);
+      setErrorMsg(error.message || 'Erro ao realizar login administrativo. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -81,7 +67,6 @@ export default function LoginScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardRoot}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
           style={styles.scroll}
@@ -91,50 +76,49 @@ export default function LoginScreen() {
         >
           <View style={styles.centeredWrap}>
             <View style={styles.brandContainer}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>PAINEL ADMIN</Text>
+              </View>
               <Text style={styles.logoText}>
                 Control<Text style={styles.logoAccent}>Tec</Text>
               </Text>
               <Text style={styles.brandSubtitle}>
-                Soluções completas para sua assistência técnica
+                Gerenciamento global de parceiros e infraestrutura
               </Text>
             </View>
 
             <View style={styles.formContainer}>
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>Acesse sua conta</Text>
+                <Text style={styles.cardTitle}>Autenticação do Sistema</Text>
                 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>E-mail</Text>
+                  <Text style={styles.label}>Usuário Master</Text>
                   <View style={styles.inputWrapper}>
-                    <Mail color={Theme.colors.textSecondary} size={20} style={styles.inputIcon} />
+                    <User color={Theme.colors.textSecondary} size={20} style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
-                      placeholder="Seu e-mail cadastrado"
+                      placeholder="admin"
                       placeholderTextColor={Theme.colors.textSecondary}
-                      value={email}
-                      onChangeText={handleEmailChange}
+                      value={username}
+                      onChangeText={setUsername}
                       autoCapitalize="none"
-                      keyboardType="email-address"
                     />
                   </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Senha</Text>
+                  <Text style={styles.label}>Senha de Segurança</Text>
                   <View style={styles.inputWrapper}>
                     <Lock color={Theme.colors.textSecondary} size={20} style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
-                      placeholder="Sua senha"
+                      placeholder="••••••"
                       placeholderTextColor={Theme.colors.textSecondary}
                       secureTextEntry
                       value={password}
-                      onChangeText={handlePasswordChange}
+                      onChangeText={setPassword}
                     />
                   </View>
-                  <TouchableOpacity style={styles.forgotPassword}>
-                    <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
-                  </TouchableOpacity>
                 </View>
 
                 {errorMsg ? (
@@ -146,7 +130,7 @@ export default function LoginScreen() {
 
                 <TouchableOpacity 
                   style={[styles.loginButton, loading && { opacity: 0.75 }]} 
-                  onPress={handleLogin}
+                  onPress={handleAdminLogin}
                   disabled={loading}
                   activeOpacity={0.8}
                 >
@@ -154,20 +138,11 @@ export default function LoginScreen() {
                     <ActivityIndicator color={Theme.colors.textInverse} size="small" />
                   ) : (
                     <>
-                      <Text style={styles.loginButtonText}>Entrar</Text>
+                      <Text style={styles.loginButtonText}>Acessar Painel</Text>
                       <ChevronRight color={Theme.colors.textInverse} size={20} />
                     </>
                   )}
                 </TouchableOpacity>
-
-                <View style={styles.registerContainer}>
-                  <Text style={styles.registerText}>Não tem uma conta?</Text>
-                  <TouchableOpacity 
-                    onPress={() => router.push('/register')}
-                  >
-                    <Text style={styles.registerLink}>Cadastre sua empresa</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             </View>
           </View>
@@ -175,11 +150,12 @@ export default function LoginScreen() {
       </KeyboardAvoidingView>
 
       <TouchableOpacity 
-        style={styles.adminGearButton}
-        onPress={() => router.push('/admin')}
-        activeOpacity={0.6}
+        style={styles.backButton}
+        onPress={() => router.replace('/')}
+        activeOpacity={0.7}
       >
-        <Settings color={Theme.colors.textInverse} size={22} style={{ opacity: 0.5 }} />
+        <ArrowLeft color={Theme.colors.textInverse} size={20} />
+        <Text style={styles.backButtonText}>Voltar</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -188,14 +164,24 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.primary,
+    backgroundColor: '#071630', // Fundo ainda mais premium e escuro para a área administrativa
   },
-  adminGearButton: {
+  backButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 54 : 20,
-    right: 20,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
     zIndex: 100,
     padding: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   keyboardRoot: {
     flex: 1,
@@ -220,6 +206,21 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     width: '100%',
   },
+  badge: {
+    backgroundColor: 'rgba(255, 183, 3, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 183, 3, 0.3)',
+    marginBottom: Theme.spacing.sm,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#FFB703',
+    letterSpacing: 1.5,
+  },
   logoText: {
     fontSize: 40,
     fontWeight: '900',
@@ -227,34 +228,35 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   logoAccent: {
-    color: Theme.colors.accent, // Laranja/Amarelo
+    color: Theme.colors.accent,
   },
   brandSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.textInverse,
-    opacity: 0.8,
+    opacity: 0.7,
     marginTop: Theme.spacing.xs,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   formContainer: {
     width: '100%',
     maxWidth: 400,
   },
   card: {
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     padding: Theme.spacing.xl,
-    borderRadius: 20,
+    borderRadius: 24,
     width: '100%',
-    maxWidth: 400,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 15,
   },
   cardTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: Theme.colors.textPrimary,
+    color: '#071630',
     marginBottom: Theme.spacing.xl,
     textAlign: 'center',
   },
@@ -262,17 +264,21 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.lg,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Theme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#071630',
     marginBottom: Theme.spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.colors.inputBackground,
+    backgroundColor: '#F3F4F6',
     borderRadius: Theme.borderRadius.md,
     paddingHorizontal: Theme.spacing.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   inputIcon: {
     marginRight: Theme.spacing.sm,
@@ -280,20 +286,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 48,
-    color: Theme.colors.textPrimary,
+    color: '#1F2937',
     fontSize: 16,
     ...Platform.select({
       web: { outlineStyle: 'none' as any }
     }),
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: Theme.spacing.sm,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: Theme.colors.primary,
-    fontWeight: '500',
   },
   errorBox: {
     flexDirection: 'row',
@@ -313,39 +310,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: Theme.colors.accent,
+    backgroundColor: '#0F2A5A', // Botão azul premium escuro para painel admin
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     height: 52,
     borderRadius: Theme.borderRadius.md,
     marginTop: Theme.spacing.md,
-    shadowColor: Theme.colors.accent,
+    shadowColor: '#0F2A5A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   loginButtonText: {
-    color: Theme.colors.textInverse, // Texto branco no botão amarelo
-    fontSize: 18,
+    color: Theme.colors.textInverse,
+    fontSize: 16,
     fontWeight: 'bold',
     marginRight: Theme.spacing.xs,
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: Theme.spacing.xl,
-  },
-  registerText: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
-    marginRight: Theme.spacing.xs,
-  },
-  registerLink: {
-    fontSize: 14,
-    color: Theme.colors.primary,
-    fontWeight: 'bold',
   },
 });

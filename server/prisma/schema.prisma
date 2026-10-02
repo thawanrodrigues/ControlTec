@@ -15,19 +15,23 @@ model Company {
   phone     String?
   email     String?
   address   String?
+  logo      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  blocked   Boolean  @default(false)
 
-  users      User[]
-  customers  Customer[]
-  devices    Device[]
-  orders     ServiceOrder[]
-  estimates  Estimate[]
-  inventory  InventoryItem[]
-  finances   Transaction[]
-  schedules  Schedule[]
-  services   Service[]
-  sales      Sale[]
+  users       User[]
+  customers   Customer[]
+  devices     Device[]
+  orders      ServiceOrder[]
+  estimates   Estimate[]
+  inventory   InventoryItem[]
+  finances    Transaction[]
+  schedules   Schedule[]
+  services    Service[]
+  sales       Sale[]
+  visits      Visit[]
+  fixedVisits FixedVisit[]
 }
 
 model User {
@@ -74,6 +78,8 @@ model Device {
   customer     Customer @relation(fields: [customerId], references: [id])
   companyId    String
   company      Company  @relation(fields: [companyId], references: [id])
+  checklist    String?
+  imageUrl     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -201,6 +207,31 @@ model Schedule {
   notes      String?
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Visit {
+  id          String   @id @default(uuid())
+  clientName  String
+  address     String?
+  time        String?
+  serviceDone String?
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FixedVisit {
+  id         String   @id @default(uuid())
+  clientName String
+  address    String?
+  dayOfWeek  String
+  time       String?
+  notes      String?
   companyId  String
   company    Company  @relation(fields: [companyId], references: [id])
   createdAt  DateTime @default(now())

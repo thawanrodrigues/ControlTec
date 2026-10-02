@@ -17,7 +17,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/summary', async (req: Request, res: Response) => {
   const companyId = (req as any).companyId;
   const all = await prisma.transaction.findMany({ where: { companyId } });
-  const receitas = all.filter(t => t.type === 'receita' && t.status === 'Recebido').reduce((s, t) => s + t.value, 0);
+  const receitas = all.filter(t => (t.type === 'receita' || t.type === 'capital') && t.status === 'Recebido').reduce((s, t) => s + t.value, 0);
   const despesas = all.filter(t => t.type === 'despesa' && t.status === 'Pago').reduce((s, t) => s + t.value, 0);
   const pendente = all.filter(t => t.status === 'Pendente').reduce((s, t) => s + t.value, 0);
   res.json({ receitas, despesas, saldo: receitas - despesas, pendente });

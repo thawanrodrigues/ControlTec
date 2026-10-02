@@ -142,7 +142,7 @@ export default function CustomersScreen() {
           <ActivityIndicator size="large" color={Theme.colors.primary} style={{ marginTop: 40 }} />
         ) : (
           <ScrollView style={styles.listContainer}>
-            {!useTableLayout && (
+            {useTableLayout && (
               <View style={styles.tableHeader}>
                 <Text style={[styles.tableHeaderText, { flex: 2 }]}>Nome / E-mail</Text>
                 <Text style={[styles.tableHeaderText, { flex: 1 }]}>Telefone</Text>
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     marginLeft: Theme.spacing.sm,
     fontSize: 15,
     color: Theme.colors.textPrimary,
-    ...Platform.select({ web: { outlineStyle: 'none' } })
+    ...Platform.select({ web: { outlineStyle: 'none' as any } })
   },
   listContainer: {
     flex: 1,
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.md,
     fontSize: 16,
     color: Theme.colors.textPrimary,
-    ...Platform.select({ web: { outlineStyle: 'none' } })
+    ...Platform.select({ web: { outlineStyle: 'none' as any } })
   },
   modalFooter: {
     flexDirection: 'row',

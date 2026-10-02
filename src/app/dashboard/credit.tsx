@@ -208,7 +208,7 @@ export default function CreditScreen() {
 
 const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 12, marginBottom: 16, flexWrap: 'wrap' },
-  summaryCard: { flexGrow: 1, flexBasis: 0, minWidth: 140, backgroundColor: Theme.colors.surface, padding: 12, borderRadius: 10, borderLeftWidth: 5 },
+  summaryCard: { flexGrow: 1, minWidth: 140, backgroundColor: Theme.colors.surface, padding: 12, borderRadius: 10, borderLeftWidth: 5 },
   summaryLabel: { fontSize: 11, color: Theme.colors.textSecondary, textTransform: 'uppercase', fontWeight: 'bold' },
   summaryValue: { fontSize: 18, fontWeight: '900', marginTop: 4 },
   empty: { alignItems: 'center', paddingVertical: 60, gap: 12 },

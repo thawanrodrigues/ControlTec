@@ -26,6 +26,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/index" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/dashboard" options={{ headerShown: false }} />
       </Stack>
     </View>
     </SafeAreaProvider>

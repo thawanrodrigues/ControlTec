@@ -40,6 +40,10 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Credenciais inválidas' });
 
+    if (user.company.blocked) {
+      return res.status(403).json({ error: 'Acesso bloqueado para esta empresa.' });
+    }
+
     const token = jwt.sign({ userId: user.id, companyId: user.companyId }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ 
       token, 

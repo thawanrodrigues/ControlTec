@@ -42,7 +42,8 @@ export default function RegisterScreen() {
       console.log('RegisterScreen: calling api.register', { email, companyName });
       const response = await api.register(formData);
       console.log('RegisterScreen: registration successful');
-      api.setToken(response.token);
+      await api.setToken(response.token);
+      await api.setUserRole(response.user.role);
       router.replace('/dashboard');
     } catch (error: any) {
       console.error('RegisterScreen Error:', error.message);
@@ -59,11 +60,6 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
       <View style={styles.root}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft color={Theme.colors.textInverse} size={24} />
-          <Text style={styles.backButtonText}>Voltar</Text>
-        </TouchableOpacity>
-
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -165,13 +161,20 @@ export default function RegisterScreen() {
 
               <View style={styles.footerRow}>
                 <Text style={styles.footerText}>Já possui conta?</Text>
-                <TouchableOpacity onPress={() => router.replace('/')}>
+                <TouchableOpacity 
+                  onPress={() => router.replace('/')}
+                >
                   <Text style={styles.footerLink}>Entrar</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </ScrollView>
+
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ChevronLeft color={Theme.colors.textInverse} size={24} />
+          <Text style={styles.backButtonText}>Voltar</Text>
+        </TouchableOpacity>
       </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -283,7 +286,7 @@ const styles = StyleSheet.create({
     color: Theme.colors.textPrimary,
     fontSize: 16,
     ...Platform.select({
-      web: { outlineStyle: 'none' },
+      web: { outlineStyle: 'none' as any },
     }),
   },
   submitButton: {

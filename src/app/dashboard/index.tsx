@@ -6,10 +6,7 @@ import {
   ScrollView, 
   TouchableOpacity, 
   ActivityIndicator,
-  Modal,
-  TextInput,
   Platform,
-  KeyboardAvoidingView,
   Alert
 } from 'react-native';
 import { Theme } from '../../ui/themes';
@@ -18,82 +15,100 @@ import {
   ClipboardList, 
   TrendingUp, 
   AlertCircle,
-  Clock,
-  ArrowRight,
-  X,
-  Plus
+  Check,
+  CircleDollarSign,
+  Eye,
+  EyeOff
 } from 'lucide-react-native';
 import { api } from '../../services/api';
 import { useBreakpoints } from '../../ui/useBreakpoints';
+import HomeModals from './components/HomeModals';
+import { useRouter } from 'expo-router';
 
 type ModalType = 'os' | 'cliente' | 'despesa' | null;
 
 export default function Home() {
   const { width, isCompact } = useBreakpoints();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [pendingBills, setPendingBills] = useState<any[]>([]);
 
   const [stats, setStats] = useState({
     customers: 0,
     activeOrders: 0,
     monthlyRevenue: 0,
-    pendingEstimates: 0
+    cashBalance: 0
   });
-  const [activities, setActivities] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(true);
+  const [showValues, setShowValues] = useState(true);
 
   // Dados para modais
   const [customers, setCustomers] = useState<any[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
 
-  // Formulário OS
+  // Formulários de modais
   const [formOs, setFormOs] = useState({
-    status: 'Aberto', description: '', defect: '', totalValue: '0', customerId: '', deviceId: ''
+    status: 'Aberto', description: '', defect: '', totalValue: '0', customerId: '', deviceId: '', technician: '',
+    isNewCustomer: false, newCustomerName: '', isNewDevice: false, newDeviceType: '', newDeviceModel: ''
   });
-
-  // Formulário Cliente
   const [formCliente, setFormCliente] = useState({
     name: '', email: '', phone: '', document: '', address: ''
   });
-
-  // Formulário Despesa
   const [formDespesa, setFormDespesa] = useState({
     description: '', type: 'despesa', amount: '0', category: '', status: 'Pendente'
   });
 
+  const handlePayBillHome = async (item: any) => {
+    try {
+      await api.update('finance', item.id, {
+        desc: item.desc,
+        type: item.type,
+        value: item.value,
+        category: item.category,
+        status: 'Pago',
+        date: new Date()
+      });
+      fetchStats();
+      if (Platform.OS === 'web') {
+        alert(`Conta "${item.desc}" marcada como PAGA! O valor de R$ ${item.value.toFixed(2)} foi lançado como despesa.`);
+      } else {
+        Alert.alert('Sucesso', `Conta "${item.desc}" marcada como PAGA!`);
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err.message);
+    }
+  };
+
   const fetchStats = async () => {
     try {
-      const [custData, orders, finance, estimates, devData] = await Promise.all([
+      const [custData, orders, finance, devData] = await Promise.all([
         api.getAll('customers'),
         api.getAll('orders'),
         api.getAll('finance'),
-        api.getAll('estimates'),
         api.getAll('devices')
       ]);
 
       setCustomers(custData);
       setDevices(devData);
+      const bills = finance.filter((f: any) => f.type === 'despesa' && f.status === 'Pendente');
+      setPendingBills(bills);
+
+      const monthlyRevenue = finance
+        .filter((f: any) => f.type === 'receita' && f.status === 'Recebido')
+        .reduce((acc: number, f: any) => acc + (f.value || 0), 0);
+
+      const despesas = finance
+        .filter((f: any) => f.type === 'despesa' && f.status === 'Pago')
+        .reduce((acc: number, f: any) => acc + (f.value || 0), 0);
+
       setStats({
         customers: custData.length,
         activeOrders: orders.filter((o: any) => o.status !== 'Concluído').length,
-        monthlyRevenue: finance
-          .filter((f: any) => f.type === 'receita' && f.status === 'Recebido')
-          .reduce((acc: number, f: any) => acc + f.amount, 0),
-        pendingEstimates: estimates.filter((e: any) => e.status === 'Pendente').length
+        monthlyRevenue,
+        cashBalance: monthlyRevenue - despesas
       });
-
-      const recentOrders = orders.slice(0, 3).map((o: any) => ({
-        id: o.id,
-        text: `Nova OS ${o.code} criada`,
-        time: new Date(o.createdAt).toLocaleDateString('pt-BR')
-      }));
-      const recentEstimates = estimates.slice(0, 3).map((e: any) => ({
-        id: e.id,
-        text: `Orçamento ${e.code} gerado`,
-        time: new Date(e.createdAt).toLocaleDateString('pt-BR')
-      }));
-      
-      setActivities([...recentOrders, ...recentEstimates].slice(0, 4));
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {
@@ -101,7 +116,25 @@ export default function Home() {
     }
   };
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => {
+    const checkAccess = async () => {
+      let role = api.getUserRole();
+      if (!role) {
+        try {
+          const profile = await api.getProfile();
+          await api.setUserRole(profile.role);
+          role = profile.role;
+        } catch (e) {
+          console.log('Error verifying role:', e);
+        }
+      }
+      const adminCheck = role === 'admin' || role === null || role === undefined || role === '';
+      setIsAdmin(adminCheck);
+      setShowValues(adminCheck); // Visível para admin por padrão, oculto para funcionário
+      fetchStats();
+    };
+    checkAccess();
+  }, []);
 
   const handleSaveOs = async () => {
     if (!formOs.customerId || !formOs.deviceId) {
@@ -110,9 +143,31 @@ export default function Home() {
     }
     setSaveLoading(true);
     try {
-      await api.create('orders', { ...formOs, totalValue: parseFloat(formOs.totalValue) || 0 });
+      const payload: any = {
+        customerId: formOs.customerId,
+        deviceId: formOs.deviceId,
+        deviceModel: formOs.deviceModel || '',
+        status: formOs.status,
+        description: formOs.description,
+        defect: formOs.defect,
+        totalValue: parseFloat(formOs.totalValue) || 0,
+        technician: formOs.technician
+      };
+
+      if (formOs.isNewCustomer && formOs.newCustomerName) {
+        payload.customerId = formOs.newCustomerName;
+      }
+      if (formOs.isNewDevice && formOs.newDeviceType) {
+        payload.deviceId = formOs.newDeviceType;
+        payload.deviceModel = formOs.newDeviceModel;
+      }
+
+      await api.create('orders', payload);
       setActiveModal(null);
-      setFormOs({ status: 'Aberto', description: '', defect: '', totalValue: '0', customerId: '', deviceId: '' });
+      setFormOs({ 
+        status: 'Aberto', description: '', defect: '', totalValue: '0', customerId: '', deviceId: '', technician: '',
+        isNewCustomer: false, newCustomerName: '', isNewDevice: false, newDeviceType: '', newDeviceModel: ''
+      });
       fetchStats();
     } catch (e: any) { Alert.alert('Erro', e.message); }
     finally { setSaveLoading(false); }
@@ -134,7 +189,7 @@ export default function Home() {
     if (!formDespesa.description) { Alert.alert('Aviso', 'Descrição é obrigatória'); return; }
     setSaveLoading(true);
     try {
-      await api.create('finance', { ...formDespesa, amount: parseFloat(formDespesa.amount) || 0 });
+      await api.create('finance', { ...formDespesa, amount: parseFloat(formDespesa.amount) || 0, value: parseFloat(formDespesa.amount) || 0 });
       setActiveModal(null);
       setFormDespesa({ description: '', type: 'despesa', amount: '0', category: '', status: 'Pendente' });
       fetchStats();
@@ -146,7 +201,7 @@ export default function Home() {
     { title: 'Clientes', value: stats.customers, icon: Users, color: '#4F46E5', label: 'Total cadastrados' },
     { title: 'OS Ativas', value: stats.activeOrders, icon: ClipboardList, color: '#10B981', label: 'Em andamento' },
     { title: 'Receita', value: `R$ ${stats.monthlyRevenue.toFixed(2)}`, icon: TrendingUp, color: '#F59E0B', label: 'Este mês' },
-    { title: 'Orçamentos', value: stats.pendingEstimates, icon: AlertCircle, color: '#EF4444', label: 'Aguardando aprovação' },
+    { title: 'Saldo Caixa', value: `R$ ${stats.cashBalance.toFixed(2)}`, icon: CircleDollarSign, color: stats.cashBalance >= 0 ? '#10B981' : '#EF4444', label: 'Caixa atual' },
   ];
 
   if (loading) {
@@ -163,60 +218,133 @@ export default function Home() {
         style={styles.container}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingHorizontal: Math.max(Theme.spacing.md, Math.min(Theme.spacing.xl * 2, width * 0.05)) },
+          { paddingHorizontal: isCompact ? Theme.spacing.md : Math.max(Theme.spacing.md, Math.min(Theme.spacing.xl * 2, width * 0.05)) },
         ]}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, isCompact && styles.headerMobile]}>
           <View>
-            <Text style={styles.welcomeText}>Olá, Bem-vindo!</Text>
-            <Text style={styles.dateText}>Confira o resumo da sua assistência técnica hoje.</Text>
+            <Text style={[styles.welcomeText, isCompact && styles.welcomeTextMobile]}>Olá, Bem-vindo!</Text>
+            <Text style={[styles.dateText, isCompact && styles.dateTextMobile]}>Resumo da assistência hoje.</Text>
           </View>
         </View>
 
-        <View style={[styles.kpiGrid, isCompact ? styles.kpiGridMobile : undefined]}>
-          {kpis.map((kpi, index) => (
-            <View key={index} style={[styles.kpiCard, isCompact ? styles.kpiCardMobile : undefined]}>
-              <View style={[styles.iconContainer, { backgroundColor: kpi.color + '20' }]}>
-                <kpi.icon size={24} color={kpi.color} />
+        {pendingBills.length > 0 && (
+          <View style={styles.alertPanel}>
+            <View style={styles.alertHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <AlertCircle size={20} color="#EF4444" />
+                <Text style={styles.alertTitle}>Contas a Pagar Pendentes ({pendingBills.length})</Text>
               </View>
-              <View style={styles.kpiInfo}>
-                <Text style={styles.kpiTitle}>{kpi.title}</Text>
-                <Text style={styles.kpiValue}>{kpi.value}</Text>
-                <Text style={styles.kpiLabel}>{kpi.label}</Text>
-              </View>
+              <Text style={styles.alertSubtitle}>Lembrete de compromissos financeiros cadastrados no sistema.</Text>
             </View>
-          ))}
+            <View style={styles.alertList}>
+              {pendingBills.map((bill) => (
+                <View key={bill.id} style={styles.alertItem}>
+                  <View style={{ flex: 1, minWidth: 150 }}>
+                    <Text style={styles.alertItemDesc}>{bill.desc}</Text>
+                    <Text style={styles.alertItemMeta}>
+                      Vencimento: {new Date(bill.date).toLocaleDateString('pt-BR')} • {bill.category || 'Sem Categoria'}
+                    </Text>
+                  </View>
+                  <View style={styles.alertItemRight}>
+                    <Text style={styles.alertItemValue}>R$ {bill.value.toFixed(2)}</Text>
+                    <TouchableOpacity 
+                      style={styles.alertPayBtn} 
+                      onPress={() => handlePayBillHome(bill)}
+                    >
+                      <Check size={14} color="#FFF" />
+                      <Text style={styles.alertPayBtnText}>Baixar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <View style={[styles.kpiGrid, isCompact && styles.kpiGridMobile]}>
+          {kpis.map((kpi, index) => {
+            const isFinancial = kpi.title === 'Receita' || kpi.title === 'Saldo Caixa';
+            const displayValue = isFinancial && !showValues ? 'R$ •••••' : kpi.value;
+            
+            if (isCompact) {
+              // Layout mobile (coluna)
+              return (
+                <View key={index} style={[styles.kpiCard, styles.kpiCardMobile]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 8 }}>
+                    <View style={[styles.iconContainer, styles.iconContainerMobile, { backgroundColor: kpi.color + '20' }]}>
+                      <kpi.icon size={20} color={kpi.color} />
+                    </View>
+                    {isFinancial && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (isAdmin) {
+                            setShowValues(!showValues);
+                          } else {
+                            Alert.alert('Acesso Restrito', 'Apenas usuários administradores podem visualizar estes dados financeiros.');
+                          }
+                        }}
+                        style={{ padding: 4 }}
+                      >
+                        {showValues && isAdmin ? (
+                          <Eye size={18} color={Theme.colors.textSecondary} />
+                        ) : (
+                          <EyeOff size={18} color={Theme.colors.textSecondary} />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <View style={[styles.kpiInfo, styles.kpiInfoMobile]}>
+                    <Text style={[styles.kpiTitle, styles.kpiTitleMobile]}>{kpi.title}</Text>
+                    <Text style={[styles.kpiValue, styles.kpiValueMobile]}>{displayValue}</Text>
+                  </View>
+                </View>
+              );
+            }
+
+            // Layout desktop (linha)
+            return (
+              <View key={index} style={styles.kpiCard}>
+                <View style={[styles.iconContainer, { backgroundColor: kpi.color + '20' }]}>
+                  <kpi.icon size={24} color={kpi.color} />
+                </View>
+                <View style={styles.kpiInfo}>
+                  <Text style={styles.kpiTitle}>{kpi.title}</Text>
+                  <Text style={styles.kpiValue}>{displayValue}</Text>
+                  <Text style={styles.kpiLabel}>{kpi.label}</Text>
+                </View>
+                {isFinancial && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (isAdmin) {
+                        setShowValues(!showValues);
+                      } else {
+                        Alert.alert('Acesso Restrito', 'Apenas usuários administradores podem visualizar estes dados financeiros.');
+                      }
+                    }}
+                    style={{ padding: 8, marginLeft: 'auto' }}
+                  >
+                    {showValues && isAdmin ? (
+                      <Eye size={20} color={Theme.colors.textSecondary} />
+                    ) : (
+                      <EyeOff size={20} color={Theme.colors.textSecondary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
         </View>
 
         <View style={[styles.mainRow, isCompact ? styles.mainRowMobile : undefined]}>
-          <View style={[styles.section, styles.activitySection, isCompact ? styles.sectionMobile : undefined]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Atividades Recentes</Text>
-              <TouchableOpacity style={styles.seeAll}>
-                <Text style={styles.seeAllText}>Ver todas</Text>
-                <ArrowRight size={14} color={Theme.colors.accent} />
-              </TouchableOpacity>
-            </View>
-            {activities.length === 0 ? (
-              <Text style={{ textAlign: 'center', marginTop: 20, color: Theme.colors.textSecondary }}>Nenhuma atividade recente.</Text>
-            ) : activities.map((act, i) => (
-              <View key={i} style={styles.activityItem}>
-                <View style={styles.activityIcon}>
-                  <Clock size={16} color={Theme.colors.textSecondary} />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityText}>{act.text}</Text>
-                  <Text style={styles.activityTime}>{act.time}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
           <View style={[styles.section, styles.actionsSection, isCompact ? styles.sectionMobile : undefined]}>
             <Text style={styles.sectionTitle}>Ações Rápidas</Text>
             <View style={styles.actionsGrid}>
               <TouchableOpacity style={styles.actionButton} onPress={() => setActiveModal('os')}>
                 <Text style={styles.actionButtonText}>Nova OS</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/dashboard/estimates?openModal=true')}>
+                <Text style={styles.actionButtonText}>Novo Orçamento</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton} onPress={() => setActiveModal('cliente')}>
                 <Text style={styles.actionButtonText}>Novo Cliente</Text>
@@ -232,143 +360,22 @@ export default function Home() {
         </View>
       </ScrollView>
 
-      {/* ===== MODAL: NOVA OS ===== */}
-      <Modal visible={activeModal === 'os'} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nova Ordem de Serviço</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><X color={Theme.colors.textSecondary} size={24} /></TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Cliente *</Text>
-                <View style={styles.selectWrapper}>
-                  <select style={styles.htmlSelect as any} value={formOs.customerId} onChange={(e: any) => setFormOs({...formOs, customerId: e.target.value})}>
-                    <option value="">Selecione um cliente...</option>
-                    {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </View>
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Aparelho *</Text>
-                <View style={styles.selectWrapper}>
-                  <select style={styles.htmlSelect as any} value={formOs.deviceId} onChange={(e: any) => setFormOs({...formOs, deviceId: e.target.value})}>
-                    <option value="">Selecione um aparelho...</option>
-                    {devices.map((d: any) => <option key={d.id} value={d.id}>{d.brand} {d.model}</option>)}
-                  </select>
-                </View>
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Defeito Relatado</Text>
-                <TextInput style={[styles.input, { height: 80 }]} multiline value={formOs.defect} onChangeText={v => setFormOs({...formOs, defect: v})} placeholder="Descreva o problema..." placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Valor (R$)</Text>
-                <TextInput style={styles.input} keyboardType="numeric" value={formOs.totalValue} onChangeText={v => setFormOs({...formOs, totalValue: v})} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Status</Text>
-                <View style={styles.selectWrapper}>
-                  <select style={styles.htmlSelect as any} value={formOs.status} onChange={(e: any) => setFormOs({...formOs, status: e.target.value})}>
-                    <option value="Aberto">Aberto</option>
-                    <option value="Em Andamento">Em Andamento</option>
-                    <option value="Aguardando Peça">Aguardando Peça</option>
-                    <option value="Concluído">Concluído</option>
-                  </select>
-                </View>
-              </View>
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setActiveModal(null)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveOs} disabled={saveLoading}>
-                {saveLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveButtonText}>Criar OS</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* ===== MODAL: NOVO CLIENTE ===== */}
-      <Modal visible={activeModal === 'cliente'} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Novo Cliente</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><X color={Theme.colors.textSecondary} size={24} /></TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nome Completo *</Text>
-                <TextInput style={styles.input} value={formCliente.name} onChangeText={v => setFormCliente({...formCliente, name: v})} placeholder="Nome do cliente" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Telefone</Text>
-                <TextInput style={styles.input} keyboardType="phone-pad" value={formCliente.phone} onChangeText={v => setFormCliente({...formCliente, phone: v})} placeholder="(00) 00000-0000" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>E-mail</Text>
-                <TextInput style={styles.input} keyboardType="email-address" value={formCliente.email} onChangeText={v => setFormCliente({...formCliente, email: v})} placeholder="email@exemplo.com" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>CPF / CNPJ</Text>
-                <TextInput style={styles.input} value={formCliente.document} onChangeText={v => setFormCliente({...formCliente, document: v})} placeholder="000.000.000-00" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Endereço</Text>
-                <TextInput style={styles.input} value={formCliente.address} onChangeText={v => setFormCliente({...formCliente, address: v})} placeholder="Rua, Número, Bairro, Cidade" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setActiveModal(null)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveCliente} disabled={saveLoading}>
-                {saveLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveButtonText}>Salvar</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* ===== MODAL: LANÇAR DESPESA ===== */}
-      <Modal visible={activeModal === 'despesa'} transparent animationType="fade">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Lançar Despesa</Text>
-              <TouchableOpacity onPress={() => setActiveModal(null)}><X color={Theme.colors.textSecondary} size={24} /></TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Descrição *</Text>
-                <TextInput style={styles.input} value={formDespesa.description} onChangeText={v => setFormDespesa({...formDespesa, description: v})} placeholder="Ex: Compra de peças" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Categoria</Text>
-                <TextInput style={styles.input} value={formDespesa.category} onChangeText={v => setFormDespesa({...formDespesa, category: v})} placeholder="Ex: Peças, Aluguel, Serviços" placeholderTextColor={Theme.colors.textSecondary} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Valor (R$)</Text>
-                <TextInput style={styles.input} keyboardType="numeric" value={formDespesa.amount} onChangeText={v => setFormDespesa({...formDespesa, amount: v})} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Status</Text>
-                <View style={styles.selectWrapper}>
-                  <select style={styles.htmlSelect as any} value={formDespesa.status} onChange={(e: any) => setFormDespesa({...formDespesa, status: e.target.value})}>
-                    <option value="Pendente">Pendente</option>
-                    <option value="Pago">Pago</option>
-                  </select>
-                </View>
-              </View>
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setActiveModal(null)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#EF4444' }]} onPress={handleSaveDespesa} disabled={saveLoading}>
-                {saveLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveButtonText}>Lançar</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <HomeModals 
+        activeModal={activeModal}
+        setActiveModal={setActiveModal}
+        saveLoading={saveLoading}
+        formOs={formOs}
+        setFormOs={setFormOs}
+        customers={customers}
+        devices={devices}
+        handleSaveOs={handleSaveOs}
+        formCliente={formCliente}
+        setFormCliente={setFormCliente}
+        handleSaveCliente={handleSaveCliente}
+        formDespesa={formDespesa}
+        setFormDespesa={setFormDespesa}
+        handleSaveDespesa={handleSaveDespesa}
+      />
     </>
   );
 }
@@ -378,49 +385,117 @@ const styles = StyleSheet.create({
   scrollContent: { paddingVertical: Theme.spacing.lg },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Theme.colors.background },
   header: { marginBottom: Theme.spacing.xl },
+  headerMobile: { marginBottom: Theme.spacing.md },
   welcomeText: { fontSize: 28, fontWeight: 'bold', color: Theme.colors.textInverse },
+  welcomeTextMobile: { fontSize: 22 },
   dateText: { fontSize: 16, color: Theme.colors.textInverse, opacity: 0.7, marginTop: 4 },
+  dateTextMobile: { fontSize: 13 },
+  // KPI Grid — 2x2 no mobile
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.md, marginBottom: Theme.spacing.xl },
-  kpiGridMobile: { flexDirection: 'column' },
+  kpiGridMobile: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm },
   kpiCard: { flex: 1, minWidth: 200, backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: Theme.spacing.lg, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  kpiCardMobile: { minWidth: '100%' },
+  kpiCardMobile: { 
+    minWidth: '47%', 
+    maxWidth: '49%', 
+    flex: 0, 
+    width: '48%',
+    flexDirection: 'column', 
+    alignItems: 'flex-start',
+    padding: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.sm,
+  },
   iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: Theme.spacing.md },
+  iconContainerMobile: { width: 36, height: 36, borderRadius: 18, marginRight: 0, marginBottom: 8 },
   kpiInfo: { flex: 1 },
+  kpiInfoMobile: { flex: 0 },
   kpiTitle: { fontSize: 12, fontWeight: 'bold', color: Theme.colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  kpiTitleMobile: { fontSize: 10 },
   kpiValue: { fontSize: 20, fontWeight: '900', color: Theme.colors.textPrimary, marginVertical: 2 },
+  kpiValueMobile: { fontSize: 18 },
   kpiLabel: { fontSize: 11, color: Theme.colors.textSecondary },
   mainRow: { flexDirection: 'row', gap: Theme.spacing.lg },
   mainRowMobile: { flexDirection: 'column' },
   section: { backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: Theme.spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   sectionMobile: { width: '100%', minWidth: 0 },
-  activitySection: { flex: 2 },
-  actionsSection: { flex: 1 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Theme.spacing.lg },
+  actionsSection: { flex: 1, width: '100%' },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Theme.colors.textPrimary },
-  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  seeAllText: { fontSize: 13, fontWeight: '600', color: Theme.colors.accent },
-  activityItem: { flexDirection: 'row', paddingVertical: Theme.spacing.md, borderBottomWidth: 1, borderBottomColor: Theme.colors.border },
-  activityIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.colors.inputBackground, justifyContent: 'center', alignItems: 'center', marginRight: Theme.spacing.md },
-  activityContent: { flex: 1 },
-  activityText: { fontSize: 14, color: Theme.colors.textPrimary, lineHeight: 20 },
-  activityTime: { fontSize: 12, color: Theme.colors.textSecondary, marginTop: 2 },
   actionsGrid: { gap: Theme.spacing.md, marginTop: Theme.spacing.md },
   actionButton: { backgroundColor: Theme.colors.primary, paddingVertical: Theme.spacing.md, borderRadius: Theme.borderRadius.sm, alignItems: 'center' },
   actionButtonText: { color: Theme.colors.textInverse, fontWeight: 'bold', fontSize: 14 },
-  // Modal styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: Theme.spacing.lg },
-  modalContent: { backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, width: '100%', maxWidth: 500, maxHeight: '85%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Theme.spacing.lg, borderBottomWidth: 1, borderBottomColor: Theme.colors.border },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: Theme.colors.textPrimary },
-  modalForm: { padding: Theme.spacing.lg },
-  inputGroup: { marginBottom: Theme.spacing.md },
-  label: { fontSize: 14, fontWeight: '600', color: Theme.colors.textPrimary, marginBottom: Theme.spacing.xs },
-  input: { height: 48, backgroundColor: Theme.colors.inputBackground, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.sm, paddingHorizontal: Theme.spacing.md, fontSize: 16, color: Theme.colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
-  selectWrapper: { height: 48, backgroundColor: Theme.colors.inputBackground, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.sm },
-  htmlSelect: { width: '100%', height: '100%', border: 'none', background: 'transparent', padding: '0 10px', fontSize: 16, outline: 'none' },
-  modalFooter: { flexDirection: 'row', justifyContent: 'flex-end', padding: Theme.spacing.lg, borderTopWidth: 1, borderTopColor: Theme.colors.border, gap: Theme.spacing.md },
-  cancelButton: { paddingVertical: Theme.spacing.sm, paddingHorizontal: Theme.spacing.lg },
-  cancelButtonText: { fontSize: 16, color: Theme.colors.textSecondary, fontWeight: '600' },
-  saveButton: { backgroundColor: Theme.colors.primary, paddingVertical: Theme.spacing.sm, paddingHorizontal: Theme.spacing.xl, borderRadius: Theme.borderRadius.sm, minWidth: 100, alignItems: 'center' },
-  saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  alertPanel: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: Theme.borderRadius.md,
+    padding: Theme.spacing.lg,
+    marginBottom: Theme.spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  alertHeader: {
+    marginBottom: Theme.spacing.md
+  },
+  alertTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#92400E'
+  },
+  alertSubtitle: {
+    fontSize: 13,
+    color: '#B45309',
+    marginTop: 2
+  },
+  alertList: {
+    gap: Theme.spacing.sm
+  },
+  alertItem: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    borderRadius: Theme.borderRadius.sm,
+    padding: Theme.spacing.md,
+    gap: Theme.spacing.md
+  },
+  alertItemDesc: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Theme.colors.textPrimary
+  },
+  alertItemMeta: {
+    fontSize: 12,
+    color: Theme.colors.textSecondary,
+    marginTop: 2
+  },
+  alertItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flexShrink: 0
+  },
+  alertItemValue: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#DC2626'
+  },
+  alertPayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingVertical: Theme.spacing.xs,
+    paddingHorizontal: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.sm,
+    gap: 4
+  },
+  alertPayBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold'
+  },
 });

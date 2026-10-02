@@ -17,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { api } from '../../services/api';
+import { useBreakpoints } from '../useBreakpoints';
 
 // Componente customizado para o ícone de Início (Sigla CT)
 const CTIcon = ({ size, color }: { size: number, color: string }) => (
@@ -32,7 +33,6 @@ const MENU_ITEMS = [
   { id: 'inventory', title: 'Estoque', icon: Package, route: '/dashboard/inventory' },
   { id: 'customers', title: 'Clientes', icon: Users, route: '/dashboard/customers' },
   { id: 'equipment', title: 'Aparelhos', icon: MonitorSmartphone, route: '/dashboard/equipment' },
-  { id: 'os', title: 'Ordens (OS)', icon: ClipboardList, route: '/dashboard/os' },
   { id: 'estimates', title: 'Orçamentos', icon: FileText, route: '/dashboard/estimates' },
   { id: 'finance', title: 'Financeiro', icon: CircleDollarSign, route: '/dashboard/finance' },
   { id: 'schedule', title: 'Agendamentos', icon: CalendarClock, route: '/dashboard/schedule' },
@@ -43,6 +43,56 @@ export default function TopBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { isCompact } = useBreakpoints();
+  const [pendingCount, setPendingCount] = React.useState(0);
+  const [isAdmin, setIsAdmin] = React.useState(true);
+
+  React.useEffect(() => {
+    const checkRole = async () => {
+      let role = api.getUserRole();
+      if (!role) {
+        try {
+          const profile = await api.getProfile();
+          await api.setUserRole(profile.role);
+          role = profile.role;
+        } catch (e) {
+          console.log('Error verifying role in TopBar:', e);
+        }
+      }
+      setIsAdmin(role === 'admin' || role === null || role === undefined || role === '');
+    };
+    checkRole();
+  }, [pathname]);
+
+  // Em mobile, a navegação é feita pela MobileSidebar
+  if (isCompact) {
+    return null;
+  }
+
+  const filteredMenuItems = MENU_ITEMS.filter((item) => {
+    if (!isAdmin) {
+      return item.id !== 'finance' && item.id !== 'settings';
+    }
+    return true;
+  });
+
+  const fetchPendingCount = React.useCallback(async () => {
+    try {
+      const data = await api.getAll('finance');
+      if (Array.isArray(data)) {
+        const count = data.filter((t: any) => t.type === 'despesa' && t.status === 'Pendente').length;
+        setPendingCount(count);
+      }
+    } catch (e) {
+      console.log('Error fetching pending bills count in TopBar:', e);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 5000);
+    return () => clearInterval(interval);
+  }, [fetchPendingCount, pathname]);
 
   const handleLogout = async () => {
     await api.clearToken();
@@ -58,7 +108,7 @@ export default function TopBar() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {MENU_ITEMS.map((item) => {
+          {filteredMenuItems.map((item) => {
             const isActive = pathname === item.route;
             const Icon = item.icon;
             
@@ -74,6 +124,11 @@ export default function TopBar() {
                     color={isActive ? Theme.colors.primary : Theme.colors.textSecondary} 
                     strokeWidth={isActive ? 2.5 : 2}
                   />
+                  {item.id === 'home' && pendingCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{pendingCount}</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={[styles.toolbarButtonText, isActive && styles.toolbarButtonTextActive]}>
                   {item.title}
@@ -147,5 +202,24 @@ const styles = StyleSheet.create({
   toolbarButtonTextActive: {
     color: Theme.colors.primary,
     fontWeight: 'bold',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: '#EF4444',
+    borderRadius: 9,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFF'
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+    textAlign: 'center'
   }
 });
