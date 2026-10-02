@@ -21,7 +21,7 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST || '2.25.109.173' }}
           username: ${{ secrets.VPS_USERNAME || 'root' }}
-          password: ${{ secrets.VPS_PASSWORD || 'Conecta211895@' }}
+          password: ${{ secrets.VPS_PASSWORD || 'Conecta2195@' }}
           port: 22
           script: |
             echo "🚀 Iniciando Deploy do ControlTec no servidor VPS..."
