@@ -20,8 +20,8 @@ const getApiUrl = () => {
     return `${protocol}//${hostname}${portPart}`;
   }
 
-  // 3. Fallback para dev nativo (Expo Go)
-  return 'http://localhost:4000';
+  // 3. Fallback para App Nativo Android (APK) / iOS -> Aponta direto para o servidor real de produção
+  return 'https://app1.conectasistemas.sbs';
 };
 
 const API_URL = getApiUrl();

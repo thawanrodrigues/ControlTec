@@ -5,11 +5,13 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build:web": "npx expo export --platform web && node ./scripts/post-build-pwa.js"
+    "build:web": "npx expo export --platform web && node ./scripts/post-build-pwa.js",
+    "build:apk": "npx eas-cli build -p android --profile preview",
+    "build:apk:local": "npx expo run:android --variant release"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

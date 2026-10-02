@@ -12,12 +12,17 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.controltec.app",
       "adaptiveIcon": {
         "backgroundColor": "#0F2A5A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -43,6 +48,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "eadd9b0f-b637-4033-ba01-23bfa4ea01d7"
+      }
+    },
+    "owner": "pereira456"
   }
 }
