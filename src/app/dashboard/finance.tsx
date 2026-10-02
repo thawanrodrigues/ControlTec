@@ -37,7 +37,9 @@ export default function FinanceScreen() {
     id: '',
     description: '',
     type: 'receita',
-    amount: '0',
+    amount: '',
+    discount: '',
+    warranty: '90 dias',
     category: '',
     status: 'Recebido',
     date: new Date().toISOString().split('T')[0]
@@ -77,12 +79,32 @@ export default function FinanceScreen() {
 
   const handleSave = async () => {
     if (!formData.description) return alert('Descrição é obrigatória');
+    const gross = parseFloat(formData.amount) || 0;
+    const discount = parseFloat(formData.discount) || 0;
+    const netValue = Math.max(0, gross - discount);
+
+    if (gross <= 0 && netValue <= 0) {
+      return alert('Informe um valor válido.');
+    }
+
     setSaveLoading(true);
     try {
+      let fullDesc = formData.description;
+      const details: string[] = [];
+      if (discount > 0) {
+        details.push(`Desc: R$ ${discount.toFixed(2)}`);
+      }
+      if (formData.warranty && formData.warranty !== 'Sem garantia' && formData.type === 'receita') {
+        details.push(`Garantia: ${formData.warranty}`);
+      }
+      if (details.length > 0 && !fullDesc.includes('(')) {
+        fullDesc = `${fullDesc} (${details.join(' | ')})`;
+      }
+
       const payload = {
-        desc: formData.description,
+        desc: fullDesc,
         type: formData.type,
-        value: parseFloat(formData.amount) || 0,
+        value: netValue,
         category: formData.category,
         status: formData.status,
         date: new Date(formData.date + 'T12:00:00')
@@ -98,7 +120,9 @@ export default function FinanceScreen() {
         id: '', 
         description: '', 
         type: 'receita', 
-        amount: '0', 
+        amount: '', 
+        discount: '',
+        warranty: '90 dias',
         category: '', 
         status: 'Recebido',
         date: new Date().toISOString().split('T')[0]
@@ -172,7 +196,9 @@ export default function FinanceScreen() {
                 id: '', 
                 description: '', 
                 type: activeTab === 'contas_pagar' ? 'despesa' : 'receita', 
-                amount: '0', 
+                amount: '', 
+                discount: '',
+                warranty: '90 dias',
                 category: '', 
                 status: activeTab === 'contas_pagar' ? 'Pendente' : 'Recebido',
                 date: new Date().toISOString().split('T')[0]
