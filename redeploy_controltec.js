@@ -19,7 +19,7 @@ const ssh = new NodeSSH();
 const VPS = {
   host:     '2.25.109.173',
   username: 'root',
-  password: 'Conecta211895@',
+  password: 'Conecta2195@',
 };
 
 // ── Config ─────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ function packProject() {
   step('📦 EMPACOTANDO PROJETO');
   if (fs.existsSync(ARCHIVE_LOCAL)) fs.unlinkSync(ARCHIVE_LOCAL);
   execSync(
-    `tar -czf "${ARCHIVE_NAME}" --exclude="node_modules" --exclude=".git" --exclude=".expo" --exclude="dist" --exclude="*.tar.gz" --exclude="*.zip" .`,
+    `tar -czf "${ARCHIVE_NAME}" --exclude="node_modules" --exclude=".git" --exclude=".expo" --exclude="dist" --exclude="*.tar.gz" --exclude="*.zip" --exclude="*.db*" --exclude="server/*.db*" --exclude="scripts" .`,
     { cwd: CONTROLTEC_DIR, stdio: 'inherit', shell: true }
   );
   const sizeMB = (fs.statSync(ARCHIVE_LOCAL).size / 1024 / 1024).toFixed(1);
