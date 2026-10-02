@@ -10,14 +10,15 @@ import {
   Platform,
   Alert
 } from 'react-native';
-import { Theme } from '../../ui/themes';
-import { Search, Plus, List, CircleDollarSign, CreditCard, Trash2, Check } from 'lucide-react-native';
+import { 
+  Search, Plus, List, CircleDollarSign, CreditCard, Trash2, Check, 
+  Wallet, Coins, ChevronRight, TrendingUp, TrendingDown, ArrowDownLeft, ArrowDown 
+} from 'lucide-react-native';
 import { api } from '../../services/api';
 import { useBreakpoints } from '../../ui/useBreakpoints';
 import CreditScreen from './credit';
 import FinanceModal from './components/FinanceModal';
 import PersonalCash from './components/PersonalCash';
-import { Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function FinanceScreen() {
@@ -158,7 +159,10 @@ export default function FinanceScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, isCompact ? styles.headerCompact : undefined]}>
-        <Text style={[styles.pageTitle, isCompact ? styles.pageTitleBlock : undefined]}>Financeiro</Text>
+        <View style={styles.titleRow}>
+          <Coins color="#FFFFFF" size={28} />
+          <Text style={[styles.pageTitle, isCompact ? styles.pageTitleBlock : undefined]}>Financeiro</Text>
+        </View>
         {(activeTab === 'lancamentos' || activeTab === 'contas_pagar') && (
           <TouchableOpacity 
             style={[styles.addButton, isCompact ? styles.addButtonBlock : undefined]} 
@@ -175,9 +179,9 @@ export default function FinanceScreen() {
               setModalVisible(true);
             }}
           >
-            <Plus color={Theme.colors.textInverse} size={20} />
+            <Plus color="#0F172A" size={18} />
             <Text style={styles.addButtonText}>
-              {activeTab === 'contas_pagar' ? 'Nova Conta a Pagar' : 'Novo Lançamento'}
+              {activeTab === 'contas_pagar' ? 'Novo Lançamento' : 'Novo Lançamento'}
             </Text>
           </TouchableOpacity>
         )}
@@ -191,20 +195,35 @@ export default function FinanceScreen() {
           contentContainerStyle={styles.tabBarScrollContent}
         >
           <View style={styles.tabBar}>
-            <TouchableOpacity style={[styles.tab, activeTab === 'lancamentos' && styles.tabActive]} onPress={() => setActiveTab('lancamentos')}>
-              <List size={16} color={activeTab === 'lancamentos' ? Theme.colors.accent : Theme.colors.textSecondary} />
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'lancamentos' && styles.tabActive]} 
+              onPress={() => setActiveTab('lancamentos')}
+            >
+              <List size={18} color={activeTab === 'lancamentos' ? '#EAB308' : '#64748B'} />
               <Text style={[styles.tabText, activeTab === 'lancamentos' && styles.tabTextActive]}>Lançamentos</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'contas_pagar' && styles.tabActive]} onPress={() => setActiveTab('contas_pagar')}>
-              <CircleDollarSign size={16} color={activeTab === 'contas_pagar' ? Theme.colors.accent : Theme.colors.textSecondary} />
+
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'contas_pagar' && styles.tabActive]} 
+              onPress={() => setActiveTab('contas_pagar')}
+            >
+              <CircleDollarSign size={18} color={activeTab === 'contas_pagar' ? '#EAB308' : '#64748B'} />
               <Text style={[styles.tabText, activeTab === 'contas_pagar' && styles.tabTextActive]}>Contas a Pagar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'caixa_pessoal' && styles.tabActive]} onPress={() => setActiveTab('caixa_pessoal')}>
-              <Wallet size={16} color={activeTab === 'caixa_pessoal' ? Theme.colors.accent : Theme.colors.textSecondary} />
+
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'caixa_pessoal' && styles.tabActive]} 
+              onPress={() => setActiveTab('caixa_pessoal')}
+            >
+              <Wallet size={18} color={activeTab === 'caixa_pessoal' ? '#EAB308' : '#64748B'} />
               <Text style={[styles.tabText, activeTab === 'caixa_pessoal' && styles.tabTextActive]}>Caixa Pessoal</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'credito' && styles.tabActive]} onPress={() => setActiveTab('credito')}>
-              <CreditCard size={16} color={activeTab === 'credito' ? Theme.colors.accent : Theme.colors.textSecondary} />
+
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'credito' && styles.tabActive]} 
+              onPress={() => setActiveTab('credito')}
+            >
+              <CreditCard size={18} color={activeTab === 'credito' ? '#EAB308' : '#64748B'} />
               <Text style={[styles.tabText, activeTab === 'credito' && styles.tabTextActive]}>Crédito ao Cliente</Text>
             </TouchableOpacity>
           </View>
@@ -216,38 +235,81 @@ export default function FinanceScreen() {
           {activeTab === 'lancamentos' ? (
             <View style={[styles.summaryCards, isCompact ? styles.summaryCardsMobile : undefined]}>
               <View style={[styles.summaryCard, { borderLeftColor: '#10B981' }]}>
-                <Text style={styles.summaryLabel}>Total Entradas</Text>
-                <Text style={[styles.summaryValue, { color: '#10B981' }]}>R$ {totalIncome.toFixed(2)}</Text>
+                <View style={styles.summaryCardLeft}>
+                  <View style={[styles.summaryIconBadge, { backgroundColor: '#DCFCE7' }]}>
+                    <ArrowDownLeft color="#10B981" size={22} />
+                  </View>
+                  <View>
+                    <Text style={styles.summaryLabel}>TOTAL ENTRADAS</Text>
+                    <Text style={[styles.summaryValue, { color: '#10B981' }]}>R$ {totalIncome.toFixed(2)}</Text>
+                  </View>
+                </View>
+                <ChevronRight color="#94A3B8" size={18} />
               </View>
+
               <View style={[styles.summaryCard, { borderLeftColor: '#EF4444' }]}>
-                <Text style={styles.summaryLabel}>Total Despesas</Text>
-                <Text style={[styles.summaryValue, { color: '#EF4444' }]}>R$ {totalExpense.toFixed(2)}</Text>
+                <View style={styles.summaryCardLeft}>
+                  <View style={[styles.summaryIconBadge, { backgroundColor: '#FEE2E2' }]}>
+                    <ArrowDown color="#EF4444" size={22} />
+                  </View>
+                  <View>
+                    <Text style={styles.summaryLabel}>TOTAL DESPESAS</Text>
+                    <Text style={[styles.summaryValue, { color: '#EF4444' }]}>R$ {totalExpense.toFixed(2)}</Text>
+                  </View>
+                </View>
+                <ChevronRight color="#94A3B8" size={18} />
               </View>
-              <View style={[styles.summaryCard, { borderLeftColor: Theme.colors.accent }]}>
-                <Text style={styles.summaryLabel}>Saldo</Text>
-                <Text style={styles.summaryValue}>R$ {(totalIncome - totalExpense).toFixed(2)}</Text>
+
+              <View style={[styles.summaryCard, { borderLeftColor: '#F59E0B' }]}>
+                <View style={styles.summaryCardLeft}>
+                  <View style={[styles.summaryIconBadge, { backgroundColor: '#FEF3C7' }]}>
+                    <CreditCard color="#F59E0B" size={20} />
+                  </View>
+                  <View>
+                    <Text style={styles.summaryLabel}>SALDO</Text>
+                    <Text style={[styles.summaryValue, { color: '#0F172A' }]}>R$ {(totalIncome - totalExpense).toFixed(2)}</Text>
+                  </View>
+                </View>
+                <ChevronRight color="#94A3B8" size={18} />
               </View>
             </View>
           ) : (
             <View style={[styles.summaryCards, isCompact ? styles.summaryCardsMobile : undefined]}>
               <View style={[styles.summaryCard, { borderLeftColor: '#EF4444', flex: 2 }]}>
-                <Text style={styles.summaryLabel}>Total Contas a Pagar</Text>
-                <Text style={[styles.summaryValue, { color: '#EF4444' }]}>R$ {totalPendingBills.toFixed(2)}</Text>
+                <View style={styles.summaryCardLeft}>
+                  <View style={[styles.summaryIconBadge, { backgroundColor: '#FEE2E2' }]}>
+                    <ArrowDown color="#EF4444" size={22} />
+                  </View>
+                  <View>
+                    <Text style={styles.summaryLabel}>TOTAL CONTAS A PAGAR</Text>
+                    <Text style={[styles.summaryValue, { color: '#EF4444' }]}>R$ {totalPendingBills.toFixed(2)}</Text>
+                  </View>
+                </View>
+                <ChevronRight color="#94A3B8" size={18} />
               </View>
+
               <View style={[styles.summaryCard, { borderLeftColor: '#F59E0B' }]}>
-                <Text style={styles.summaryLabel}>Contas Pendentes</Text>
-                <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>{pendingBills.length}</Text>
+                <View style={styles.summaryCardLeft}>
+                  <View style={[styles.summaryIconBadge, { backgroundColor: '#FEF3C7' }]}>
+                    <CircleDollarSign color="#F59E0B" size={20} />
+                  </View>
+                  <View>
+                    <Text style={styles.summaryLabel}>CONTAS PENDENTES</Text>
+                    <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>{pendingBills.length}</Text>
+                  </View>
+                </View>
+                <ChevronRight color="#94A3B8" size={18} />
               </View>
             </View>
           )}
 
           <View style={styles.card}>
             <View style={styles.searchBar}>
-              <Search color={Theme.colors.textSecondary} size={20} />
+              <Search color="#94A3B8" size={18} />
               <TextInput
                 style={styles.searchInput}
                 placeholder={activeTab === 'contas_pagar' ? "Pesquisar contas a pagar..." : "Pesquisar por descrição ou categoria..."}
-                placeholderTextColor={Theme.colors.textSecondary}
+                placeholderTextColor="#94A3B8"
                 value={search}
                 onChangeText={setSearch}
               />
@@ -259,12 +321,12 @@ export default function FinanceScreen() {
               <ScrollView style={styles.listContainer}>
                 {useTableLayout && (
                   <View style={styles.tableHeader}>
-                    <Text style={[styles.tableHeaderText, { flex: 2 }]}>Descrição / Categoria</Text>
+                    <Text style={[styles.tableHeaderText, { flex: 2 }]}>DESCRIÇÃO / CATEGORIA</Text>
                     <Text style={[styles.tableHeaderText, { flex: 1 }]}>
-                      {activeTab === 'contas_pagar' ? 'Vencimento' : 'Status'}
+                      {activeTab === 'contas_pagar' ? 'VENCIMENTO' : 'STATUS'}
                     </Text>
-                    <Text style={[styles.tableHeaderText, { flex: 1 }]}>Valor</Text>
-                    <Text style={[styles.tableHeaderText, { width: activeTab === 'contas_pagar' ? 140 : 80, textAlign: 'center' }]}>Ações</Text>
+                    <Text style={[styles.tableHeaderText, { flex: 1 }]}>VALOR</Text>
+                    <Text style={[styles.tableHeaderText, { width: activeTab === 'contas_pagar' ? 140 : 80, textAlign: 'center' }]}>AÇÕES</Text>
                   </View>
                 )}
 
@@ -292,7 +354,7 @@ export default function FinanceScreen() {
                               <Check size={16} color="#FFF" />
                             </TouchableOpacity>
                           )}
-                          <TouchableOpacity onPress={() => handleDelete(item.id)}><Trash2 size={18} color="#DC3545" /></TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDelete(item.id)}><Trash2 size={18} color="#EF4444" /></TouchableOpacity>
                         </View>
                       </View>
                       <View style={styles.mobileCardBody}>
@@ -300,8 +362,8 @@ export default function FinanceScreen() {
                           {(item.type === 'receita' || item.type === 'capital') ? '+' : '-'} R$ {(item.value || 0).toFixed(2)}
                         </Text>
                         {activeTab !== 'contas_pagar' && (
-                          <View style={[styles.statusBadge, { backgroundColor: item.status === 'Recebido' || item.status === 'Pago' ? '#D4EDDA' : '#FFF3CD' }]}>
-                            <Text style={[styles.statusText, { color: item.status === 'Recebido' || item.status === 'Pago' ? '#155724' : '#856404' }]}>{item.status}</Text>
+                          <View style={[styles.statusBadge, { backgroundColor: item.status === 'Recebido' || item.status === 'Pago' ? '#DCFCE7' : '#FEF3C7' }]}>
+                            <Text style={[styles.statusText, { color: item.status === 'Recebido' || item.status === 'Pago' ? '#166534' : '#92400E' }]}>{item.status}</Text>
                           </View>
                         )}
                       </View>
@@ -318,8 +380,8 @@ export default function FinanceScreen() {
                             {new Date(item.date).toLocaleDateString('pt-BR')}
                           </Text>
                         ) : (
-                          <View style={[styles.statusBadge, { backgroundColor: item.status === 'Recebido' || item.status === 'Pago' ? '#D4EDDA' : '#FFF3CD', alignSelf: 'flex-start' }]}>
-                            <Text style={[styles.statusText, { color: item.status === 'Recebido' || item.status === 'Pago' ? '#155724' : '#856404' }]}>{item.status}</Text>
+                          <View style={[styles.statusBadge, { backgroundColor: item.status === 'Recebido' || item.status === 'Pago' ? '#DCFCE7' : '#FEF3C7', alignSelf: 'flex-start' }]}>
+                            <Text style={[styles.statusText, { color: item.status === 'Recebido' || item.status === 'Pago' ? '#166534' : '#92400E' }]}>{item.status}</Text>
                           </View>
                         )}
                       </View>
@@ -336,7 +398,7 @@ export default function FinanceScreen() {
                             <Text style={{ color: '#FFF', fontSize: 11, fontWeight: 'bold' }}>Baixar</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity onPress={() => handleDelete(item.id)}><Trash2 size={18} color="#DC3545" /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(item.id)}><Trash2 size={18} color="#EF4444" /></TouchableOpacity>
                       </View>
                     </View>
                   )
@@ -366,41 +428,100 @@ export default function FinanceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: Theme.spacing.lg, backgroundColor: Theme.colors.background, minWidth: 0 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Theme.spacing.lg, gap: Theme.spacing.md },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: Theme.spacing.md },
   headerCompact: { flexDirection: 'column', alignItems: 'stretch' },
-  pageTitle: { fontSize: 24, fontWeight: 'bold', color: Theme.colors.textInverse },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pageTitle: { fontSize: 26, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 },
   pageTitleBlock: { flexShrink: 1 },
-  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: Theme.colors.accent, paddingHorizontal: Theme.spacing.md, paddingVertical: Theme.spacing.sm, borderRadius: Theme.borderRadius.sm },
+  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFB703', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, gap: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
   addButtonBlock: { alignSelf: 'stretch', justifyContent: 'center' },
-  addButtonText: { color: Theme.colors.textInverse, fontWeight: 'bold', marginLeft: Theme.spacing.xs },
-  tabBarWrapper: { marginBottom: Theme.spacing.md, flexGrow: 0, flexShrink: 0, alignSelf: 'flex-start' },
+  addButtonText: { color: '#0F172A', fontWeight: '800', fontSize: 14 },
+  
+  // Tab Bar (Pill Card)
+  tabBarWrapper: { marginBottom: 20, flexGrow: 0, flexShrink: 0, alignSelf: 'flex-start' },
   tabBarScroll: { flexGrow: 0, flexShrink: 0 },
   tabBarScrollContent: { flexGrow: 0, alignItems: 'center' },
-  tabBar: { flexDirection: 'row', backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: 4, gap: 6, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: Theme.borderRadius.sm, gap: 6, flexShrink: 0 },
-  tabActive: { backgroundColor: Theme.colors.inputBackground },
-  tabText: { fontSize: 13, fontWeight: '600', color: Theme.colors.textSecondary },
-  tabTextActive: { color: Theme.colors.accent, fontWeight: 'bold' },
-  summaryCards: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.md, marginBottom: Theme.spacing.lg },
-  summaryCardsMobile: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  summaryCard: { flexGrow: 1, minWidth: 140, backgroundColor: Theme.colors.surface, padding: Theme.spacing.md, borderRadius: Theme.borderRadius.md, borderLeftWidth: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
-  summaryLabel: { fontSize: 12, color: Theme.colors.textSecondary, textTransform: 'uppercase', fontWeight: 'bold' },
-  summaryValue: { fontSize: 22, fontWeight: '900', marginTop: 4, color: Theme.colors.textPrimary },
-  card: { flex: 1, minHeight: 200, minWidth: 0, backgroundColor: Theme.colors.surface, borderRadius: Theme.borderRadius.md, padding: Theme.spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Theme.colors.inputBackground, borderWidth: 1, borderColor: Theme.colors.border, borderRadius: Theme.borderRadius.sm, paddingHorizontal: Theme.spacing.md, marginBottom: Theme.spacing.lg, height: 44 },
-  searchInput: { flex: 1, marginLeft: Theme.spacing.sm, fontSize: 15, color: Theme.colors.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' as any } }) },
+  tabBar: { 
+    flexDirection: 'row', 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 16, 
+    padding: 6, 
+    gap: 12, 
+    alignItems: 'center', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.08, 
+    shadowRadius: 8, 
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  tab: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 9, 
+    paddingHorizontal: 18, 
+    borderRadius: 10, 
+    gap: 8, 
+    flexShrink: 0,
+    backgroundColor: 'transparent'
+  },
+  tabActive: { 
+    backgroundColor: '#F1F5F9' 
+  },
+  tabText: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#475569' 
+  },
+  tabTextActive: { 
+    color: '#EAB308', 
+    fontWeight: '800' 
+  },
+
+  // Summary Cards
+  summaryCards: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 20 },
+  summaryCardsMobile: { flexDirection: 'column', gap: 10, marginBottom: 16 },
+  summaryCard: { 
+    flex: 1, 
+    minWidth: 220, 
+    backgroundColor: '#FFFFFF', 
+    padding: 16, 
+    borderRadius: 14, 
+    borderLeftWidth: 5, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.06, 
+    shadowRadius: 8, 
+    elevation: 3 
+  },
+  summaryCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryIconBadge: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  summaryLabel: { fontSize: 11, color: '#64748B', textTransform: 'uppercase', fontWeight: '800', letterSpacing: 0.4 },
+  summaryValue: { fontSize: 22, fontWeight: '900', marginTop: 2 },
+
+  // Table Card
+  card: { flex: 1, minHeight: 250, minWidth: 0, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 14, marginBottom: 18, height: 46, gap: 8 },
+  searchInput: { flex: 1, fontSize: 14, color: '#1E293B', ...Platform.select({ web: { outlineStyle: 'none' as any } }) },
   listContainer: { flex: 1 },
-  tableHeader: { flexDirection: 'row', paddingBottom: Theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: Theme.colors.border, marginBottom: Theme.spacing.sm },
-  tableHeaderText: { fontSize: 12, fontWeight: 'bold', color: Theme.colors.textSecondary, textTransform: 'uppercase' },
-  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Theme.spacing.md, borderBottomWidth: 1, borderBottomColor: Theme.colors.inputBackground, minWidth: 0 },
-  itemName: { fontSize: 15, fontWeight: 'bold', color: Theme.colors.textPrimary },
-  itemSub: { fontSize: 13, color: Theme.colors.textSecondary },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusText: { fontSize: 11, fontWeight: 'bold' },
-  priceText: { fontSize: 15, fontWeight: 'bold' },
-  emptyText: { textAlign: 'center', marginTop: Theme.spacing.xl, color: Theme.colors.textSecondary, fontSize: 16 },
-  mobileCard: { backgroundColor: Theme.colors.inputBackground, borderRadius: Theme.borderRadius.sm, padding: Theme.spacing.md, marginBottom: Theme.spacing.md, borderWidth: 1, borderColor: Theme.colors.border },
-  mobileCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Theme.spacing.sm },
+  tableHeader: { flexDirection: 'row', paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', marginBottom: 6 },
+  tableHeaderText: { fontSize: 11, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', minWidth: 0 },
+  itemName: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  itemSub: { fontSize: 12, color: '#64748B', marginTop: 2, textTransform: 'capitalize' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  priceText: { fontSize: 14, fontWeight: '800' },
+  emptyText: { textAlign: 'center', marginTop: 40, color: '#94A3B8', fontSize: 15 },
+  
+  // Mobile Card
+  mobileCard: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  mobileCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   mobileCardBody: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  mobileActions: { flexDirection: 'row', gap: 15 }
+  mobileActions: { flexDirection: 'row', gap: 12 }
 });
